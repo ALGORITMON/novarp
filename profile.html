@@ -239,6 +239,52 @@
             </div>
         </main>
 
+        <script>
+            // Инициализация Supabase
+            const SUPABASE_URL = "https://xucgexdpbjxrszxzmoti.supabase.co";
+            const SUPABASE_ANON_KEY = "sb_publishable_luFbMKTfqpKCNqzT4Zy3CA_uFE8ucva"; // Сюда ваш ключ!
+            const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+            // Функция проверки авторизации игрока
+            async function checkAuth() {
+                // Запрашиваем данные текущей сессии
+                const { data: { user }, error } = await supabaseClient.auth.getUser();
+
+                if (error || !user) {
+                    // Если игрок не авторизован — выкидываем его на страницу входа
+                    alert("Доступ запрещен. Пожалуйста, авторизуйтесь.");
+                    window.location.href = "login.html";
+                    return;
+                }
+
+                // Если всё ок — заполняем данные на странице
+                document.getElementById('user-email').innerText = user.email;
+                
+                // Вытаскиваем Игровой Логин из метаданных, которые мы сохраняли при регистрации
+                if (user.user_metadata && user.user_metadata.display_name) {
+                    document.getElementById('user-login').innerText = user.user_metadata.display_name;
+                }
+
+                // Прячем надпись "Загрузка" и показываем кабинет
+                document.getElementById('loading-text').style.display = 'none';
+                document.getElementById('profile-content').style.display = 'block';
+            }
+
+            // Логика кнопки "Выйти"
+            document.getElementById('logout-button').addEventListener('click', async () => {
+                const { error } = await supabaseClient.auth.signOut();
+                if (error) {
+                    alert("Ошибка при выходе: " + error.message);
+                } else {
+                    alert("Вы вышли из аккаунта.");
+                    window.location.href = "login.html";
+                }
+            });
+
+            // Запускаем проверку сразу при загрузке страницы
+            document.addEventListener("DOMContentLoaded", checkAuth);
+        </script>
+
         <!-- Окно настроек (скрыто по умолчанию) -->
         <main class="profile-content" id="tab-settings" style="display: none;">
             <h2 class="section-title">Настройки аккаунта</h2>
