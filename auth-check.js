@@ -1,6 +1,6 @@
 // 1. Инициализируем подключение к вашей базе данных
-const SUPABASE_URL = "https://supabase.co";
-const SUPABASE_ANON_KEY = "ВСТАВЬТЕ_СЮДА_ВАШ_КЛЮЧ_ИЗ_БЛОКА_PUBLISHABLE_KEY";
+const SUPABASE_URL = "https://xucgexdpbjxrszxzmoti.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_luFbMKTfqpKCNqzT4Zy3CA_uFE8ucva";
 
 const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
