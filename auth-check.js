@@ -4,10 +4,10 @@ function checkAdminSession() {
 
     // Проверяем, авторизован ли админ
     if (localStorage.getItem('nova_admin_session') === 'active') {
-        loginBtn.innerText = "КАБИНЕТ";
+        loginBtn.innerText = "Выйти (Админ)";
         loginBtn.classList.add('logged-in');
     } else {
-        loginBtn.innerText = "ВХОД";
+        loginBtn.innerText = "Вход";
         loginBtn.classList.remove('logged-in');
     }
 }
@@ -15,10 +15,14 @@ function checkAdminSession() {
 // Что происходит при клике на кнопку в шапке
 function handleLoginClick() {
     if (localStorage.getItem('nova_admin_session') === 'active') {
-        // Если авторизован — перенаправляем в личный кабинет / профиль
-        window.location.href = "profile.html"; 
+        // Если вошел — разлогиниваем
+        if (confirm("Вы действительно хотите выйти из аккаунта администратора?")) {
+            localStorage.removeItem('nova_admin_session');
+            alert("Вы вышли из системы.");
+            window.location.reload(); // Перезагружаем текущую страницу
+        }
     } else {
-        // Если не авторизован — отправляем на страницу входа
+        // Если не вошел — отправляем на страницу входа
         window.location.href = "login.html";
     }
 }

@@ -164,18 +164,12 @@
     <script>
         // 1. Обновленная база данных товаров (Вместо кейсов — Оружие)
         const products = [
-            { id: 'vip', name: 'VIP статус', price: 100, category: 'donat', icon: 'fa-crown', featured: false, features: ['Доступ к 5+ эксклюзивным профессиям'] },
-            { id: 'premium', name: 'PREMIUM статус', price: 200, category: 'donat', icon: 'fa-gem', featured: true, features: ['Все возможности VIP-статуса', 'Доступ ко ВСЕМ профессиям'] },
-            { id: 'sponsor', name: 'Admin', price: 800, category: 'donat', icon: 'fa-shield-halved', featured: false, features: ['Права модератора', 'Возможность разбирать жалобы игроков', 'Доступ к админ-профессиям'] },
-            { id: 'wpn_m4a1', name: 'Автомат M4A1', price: 100, category: 'weapons', icon: 'fa-gun', featured: false, features: ['Высокая точность и глушитель в комплекте', 'Выдаётся навсегда (сохраняется после смерти)', 'Доступен для использования любой профессией'] },
-            { id: 'wpn_minigun', name: 'Тяжелый Пулемет', price: 190, category: 'weapons', icon: 'fa-jet-fighter-up', featured: false, features: ['Огромный урон и боезапас', 'Идеально подходит для удержания базы', 'Выдаётся навсегда (сохраняется после смерти)'] },
-            { id: 'money_5k', name: '5,000 Валюты', price: 5, category: 'currency', icon: 'fa-coins', featured: false, features: ['Зачисление на баланс в течение 1 минуты'] },
-            { id: 'money_25k', name: '25,000 Валюты', price: 25, category: 'currency', icon: 'fa-coins', featured: false, features: ['Зачисление на баланс в течение 1 минуты'] },
-            { id: 'money_50k', name: '50,000 Валюты', price: 50, category: 'currency', icon: 'fa-coins', featured: false, features: ['Зачисление на баланс в течение 1 минуты'] },
-            { id: 'money_100k', name: '100,000 Валюты', price: 100, category: 'currency', icon: 'fa-coins', featured: false, features: ['Зачисление на баланс в течение 1 минуты'] },
-            { id: 'money_200k', name: '200,000 Валюты', price: 200, category: 'currency', icon: 'fa-coins', featured: true, features: ['Зачисление на баланс в течение 1 минуты'] },
-            { id: 'money_500k', name: '500,000 Валюты', price: 500, category: 'currency', icon: 'fa-coins', featured: false, features: ['Зачисление на баланс в течение 1 минуты'] },
-            { id: 'money_1kk', name: '1 млн Валюты', price: 1000, category: 'currency', icon: 'fa-coins', featured: false, features: ['Зачисление на баланс в течение 1 минуты'] }
+            { id: 'vip', name: 'VIP статус', price: 199, category: 'donat', icon: 'fa-crown', featured: false, features: ['Уникальный префикс [VIP] в чате', 'Доступ к 5+ эксклюзивным профессиям', '+25% к ежеминутной зарплате', 'Лимит пропов увеличен до 50'] },
+            { id: 'premium', name: 'PREMIUM статус', price: 399, category: 'donat', icon: 'fa-gem', featured: true, features: ['Все возможности VIP-статуса', 'Префикс [PREMIUM] золотым цветом', 'Доступ ко ВСЕМ скрытым профессиям', 'Своя точка спавна и кастомный хитмаркер', 'Иммунитет к кику за АФК'] },
+            { id: 'sponsor', name: 'Sponsor Admin', price: 799, category: 'donat', icon: 'fa-shield-halved', featured: false, features: ['Права модератора (ulx/sam меню)', 'Возможность разбирать жалобы игроков', 'Доступ к админ-профессиям (AdminMod)', 'Уведомления о нарушениях в реальном времени'] },
+            { id: 'wpn_m4a1', name: 'Автомат M4A1', price: 89, category: 'weapons', icon: 'fa-gun', featured: false, features: ['Высокая точность и глушитель в комплекте', 'Выдаётся навсегда (сохраняется после смерти)', 'Доступен для использования любой профессией'] },
+            { id: 'wpn_minigun', name: 'Тяжелый Пулемет', price: 179, category: 'weapons', icon: 'fa-jet-fighter-up', featured: false, features: ['Огромный урон и боезапас', 'Идеально подходит для удержания базы', 'Выдаётся навсегда (сохраняется после смерти)'] },
+            { id: 'money_500k', name: '500,000 Валюты', price: 300, category: 'currency', icon: 'fa-coins', featured: false, features: ['Пакет со скидкой 25%', 'Хватит на покупку бизнеса или квартиры', 'Зачисление на баланс в течение 1 минуты'] }
         ];
 
         // Получаем сохраненную корзину или создаем пустую
@@ -389,8 +383,5 @@
         });
 
     </script>
-
-    <script src="auth-check.js"></script>
-    
 </body>
 </html>
