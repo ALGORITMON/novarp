@@ -5,131 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Авторизация — NOVA RP</title>
 
-<link rel="preconnect" href="https://googleapis.com">
-<link rel="preconnect" href="https://gstatic.com" crossorigin>
-<link href="https://googleapis.com/css2?family=Nunito:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://googleapis.com">
+    <link rel="preconnect" href="https://gstatic.com" crossorigin>
+    <link href="https://googleapis.com/css2?family=Nunito:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
 
     <link rel="stylesheet" href="style.css">
-    <style>
-        /* Уникальные стили для шикарного окна авторизации */
-        .login-wrapper {
-            height: 85vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
 
-        .login-card {
-            width: 100%;
-            max-width: 420px;
-            background: rgba(19, 9, 36, 0.6);
-            backdrop-filter: blur(15px); /* Сильный эффект размытия заднего фона */
-            border: 1px solid rgba(168, 85, 247, 0.3);
-            border-radius: 12px; /* Мягкие скругленные углы */
-            padding: 45px 35px;
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.7), 0 0 30px rgba(168, 85, 247, 0.15);
-            transition: border-color 0.3s ease, box-shadow 0.3s ease;
-        }
+    <script src="https://jsdelivr.net"></script>
 
-        .login-card:hover {
-            border-color: rgba(168, 85, 247, 0.6);
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.8), 0 0 40px rgba(168, 85, 247, 0.25);
-        }
-
-        .login-card h1 {
-            font-size: 28px;
-            font-weight: 900;
-            color: #fff;
-            text-align: center;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            margin-bottom: 35px;
-            text-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
-        }
-
-        /* Красивые кастомные инпуты */
-        .input-group {
-            margin-bottom: 25px;
-        }
-
-        .input-group label {
-            color: #8492a6;
-            font-size: 11px;
-            font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: 1.5px;
-            display: block;
-            margin-bottom: 8px;
-        }
-
-        .input-group input {
-            width: 100%;
-            background: rgba(5, 2, 10, 0.7);
-            border: 1px solid rgba(138, 92, 246, 0.25);
-            padding: 14px 16px;
-            color: #fff;
-            font-size: 14px;
-            border-radius: 6px;
-            font-family: 'Nunito', sans-serif;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        .input-group input:focus {
-            outline: none;
-            border-color: #a855f7;
-            background: rgba(19, 9, 36, 0.8);
-            box-shadow: 0 0 12px rgba(168, 85, 247, 0.3);
-        }
-
-        /* Премиальная неоновая кнопка */
-        .btn-submit {
-            width: 100%;
-            padding: 14px;
-            background: linear-gradient(135deg, #a855f7 0%, #6366f1 100%);
-            color: #fff;
-            border: none;
-            border-radius: 6px;
-            font-size: 14px;
-            font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(168, 85, 247, 0.3);
-            margin-top: 10px;
-        }
-
-        .btn-submit:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(168, 85, 247, 0.5);
-            background: linear-gradient(135deg, #b96cfd 0%, #7579ff 100%);
-        }
-
-        .btn-submit:active {
-            transform: translateY(0);
-        }
-
-        .login-footer {
-            font-size: 13px;
-            color: #4b5563;
-            text-align: center;
-            margin-top: 25px;
-            font-weight: 600;
-        }
-
-        .login-footer span {
-            color: #a855f7;
-            cursor: pointer;
-            transition: color 0.3s ease;
-        }
-
-        .login-footer span:hover {
-            color: #fff;
-            text-shadow: 0 0 8px rgba(168, 85, 247, 0.6);
-        }
-    </style>
 </head>
+
 <body>
 
     <!-- Наша живая атласная вуаль на фоне -->
@@ -170,14 +55,56 @@
                 </div>
 
                 <!-- ИСПРАВЛЕНО: тип кнопки изменен на обычный button, а функция вызывается через onclick -->
-                <button type="button" class="btn-submit" onclick="submitLogin()">Войти в аккаунт</button>
+                <button type="submit" class="btn btn-primary login-btn-wide">Войти в аккаунт</button>
             </form>
 
-            <div class="login-footer">
-                Еще нет аккаунта? <span>Регистрация (скоро)</span>
+            <div class="login-footer-links">
+                Еще нет аккаунта? <a href="reg.html">Регистрация</a>
             </div>
+
         </div>
     </div>
+
+    <script>
+        // Инициализация Supabase
+        const SUPABASE_URL = "https://xucgexdpbjxrszxzmoti.supabase.co";
+        const SUPABASE_ANON_KEY = "sb_publishable_luFbMKTfqpKCNqzT4Zy3CA_uFE8ucva";
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // Логика работы формы
+        document.getElementById('register-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const login = document.getElementById('username').value.trim();
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+            const passwordConfirm = document.getElementById('password-confirm').value;
+
+            // Проверяем совпадение паролей
+            if (password !== passwordConfirm) {
+                alert("Пароли не совпадают!");
+                return;
+            }
+
+            // Регистрируем в Supabase
+            const { data, error } = await supabaseClient.auth.signUp({
+                email: email,
+                password: password,
+                options: {
+                    data: {
+                        display_name: login // Сохраняем Игровой Логин внутри профиля
+                    }
+                }
+            });
+
+            if (error) {
+                alert("Ошибка регистрации: " + error.message);
+            } else {
+                alert("Аккаунт успешно создан!");
+                window.location.href = "profile.html"; // Перенаправляем в личный кабинет
+            }
+        });
+    </script>
 
     <!-- Подвал сайта из вашего CSS -->
     <footer>
@@ -202,168 +129,40 @@
         </div>
     </footer>
 
-    <style>
-    /* Настраиваем body конкретно для страницы входа, чтобы намертво заблокировать скролл */
-    body {
-        margin: 0;
-        padding: 0;
-        height: 100vh; /* Ровно 100% высоты экрана */
-        display: flex;
-        flex-direction: column; /* Элементы идут сверху вниз: header -> wrapper -> footer */
-        overflow: hidden !important; /* Намертво выключаем скролл во все стороны */
-    }
-
-    /* Обертка формы теперь занимает всё свободное пространство между шапкой и подвалом */
-    .login-wrapper {
-        flex-grow: 1; /* Растягивается и заполняет пустоту */
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 20px;
-        box-sizing: border-box;
-    }
-
-    /* Наш подвал теперь всегда прижат к самому низу */
-    footer {
-        margin-top: auto; /* Принудительно толкает подвал к полу */
-        width: 100%;
-        box-sizing: border-box;
-    }
-
-    /* Твои старые шикарные стили карточки входа (оставляем без изменений) */
-    .login-card {
-        width: 100%;
-        max-width: 420px;
-        background: rgba(19, 9, 36, 0.6);
-        backdrop-filter: blur(15px);
-        border: 1px solid rgba(168, 85, 247, 0.3);
-        border-radius: 12px;
-        padding: 45px 35px;
-        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.7), 0 0 30px rgba(168, 85, 247, 0.15);
-        transition: border-color 0.3s ease, box-shadow 0.3s ease;
-    }
-
-    .login-card:hover {
-        border-color: rgba(168, 85, 247, 0.6);
-        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.8), 0 0 40px rgba(168, 85, 247, 0.25);
-    }
-
-    .login-card h1 {
-        font-size: 28px;
-        font-weight: 900;
-        color: #fff;
-        text-align: center;
-        text-transform: uppercase;
-        letter-spacing: 2px;
-        margin-bottom: 35px;
-        text-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
-    }
-
-    .input-group {
-        margin-bottom: 25px;
-    }
-
-    .input-group label {
-        color: #8492a6;
-        font-size: 11px;
-        font-weight: 800;
-        text-transform: uppercase;
-        letter-spacing: 1.5px;
-        display: block;
-        margin-bottom: 8px;
-    }
-
-    .input-group input {
-        width: 100%;
-        background: rgba(5, 2, 10, 0.7);
-        border: 1px solid rgba(138, 92, 246, 0.25);
-        padding: 14px 16px;
-        color: #fff;
-        font-size: 14px;
-        border-radius: 6px;
-        font-family: 'Nunito', sans-serif;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-
-    .input-group input:focus {
-        outline: none;
-        border-color: #a855f7;
-        background: rgba(19, 9, 36, 0.8);
-        box-shadow: 0 0 12px rgba(168, 85, 247, 0.3);
-    }
-
-    .btn-submit {
-        width: 100%;
-        padding: 14px;
-        background: linear-gradient(135deg, #a855f7 0%, #6366f1 100%);
-        color: #fff;
-        border: none;
-        border-radius: 6px;
-        font-size: 14px;
-        font-weight: 800;
-        text-transform: uppercase;
-        letter-spacing: 2px;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        box-shadow: 0 4px 15px rgba(168, 85, 247, 0.3);
-        margin-top: 10px;
-    }
-
-    .btn-submit:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(168, 85, 247, 0.5);
-        background: linear-gradient(135deg, #b96cfd 0%, #7579ff 100%);
-    }
-
-    .login-footer {
-        font-size: 13px;
-        color: #4b5563;
-        text-align: center;
-        margin-top: 25px;
-        font-weight: 600;
-    }
-
-    .login-footer span {
-        color: #a855f7;
-        cursor: pointer;
-    }
-
-</style>
-
     <script>
-    // Внутренняя функция шифрования
-    async function getSHA256(text) {
-        const msgBuffer = new TextEncoder().encode(text);
-        const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
-        const hashArray = Array.from(new Uint8Array(hashBuffer));
-        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-    }
+        // Внутренняя функция шифрования
+        async function getSHA256(text) {
+            const msgBuffer = new TextEncoder().encode(text);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        }
 
-    // Обычная функция для кнопки, которая сама вызывает шифрование
-    function submitLogin() {
-        const user = document.getElementById('username').value;
-        const pass = document.getElementById('password').value;
+        // Обычная функция для кнопки, которая сама вызывает шифрование
+        function submitLogin() {
+            const user = document.getElementById('username').value;
+            const pass = document.getElementById('password').value;
 
-        // Запускаем шифрование и ждем результат
-        getSHA256(pass).then(hashedPassword => { 
-            
-            const targetHash = "90ba9328b1e19a02ecfdf82a609a4c01a24402a570b761cbd7ccda2351d08e91";
+            // Запускаем шифрование и ждем результат
+            getSHA256(pass).then(hashedPassword => { 
+                
+                const targetHash = "90ba9328b1e19a02ecfdf82a609a4c01a24402a570b761cbd7ccda2351d08e91";
 
-            if (user === "admin" && hashedPassword === targetHash) {
-                localStorage.setItem('nova_admin_session', 'active');
-                alert("Успешный вход! Доступ к управлению сайтом разрешен.");
-                window.location.href = "index.html"; 
-            } else {
-                alert("Неверный логин или пароль!");
-            }
-        }).catch(err => {
-            console.error("Ошибка шифрования:", err);
-            alert("Произошла ошибка при обработке пароля.");
-        });
-    }
-</script>
+                if (user === "admin" && hashedPassword === targetHash) {
+                    localStorage.setItem('nova_admin_session', 'active');
+                    alert("Успешный вход! Доступ к управлению сайтом разрешен.");
+                    window.location.href = "index.html"; 
+                } else {
+                    alert("Неверный логин или пароль!");
+                }
+            }).catch(err => {
+                console.error("Ошибка шифрования:", err);
+                alert("Произошла ошибка при обработке пароля.");
+            });
+        }
+    </script>
 
-<script src="auth-check.js"></script>
+    <script src="auth-check.js"></script>
 
 </body>
 </html>
