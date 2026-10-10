@@ -1266,3 +1266,315 @@ footer {
     color: #4ade80;
     border: 1px solid rgba(34, 197, 94, 0.3);
 }
+
+
+
+/* ==========================================================================
+   СТРАНИЦЫ АВТОРИЗАЦИИ И РЕГИСТРАЦИИ — СТИЛИЗАЦИЯ (ФОРМЫ И КОНТЕЙНЕРЫ)
+   ========================================================================== */
+
+/* Центрирующий оберточный контейнер */
+.auth-wrapper {
+    min-height: calc(100vh - 90px - 340px); /* Вычитаем точную высоту шапки (90px) и примерную высоту футера */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    box-sizing: border-box;
+}
+
+/* Карточка авторизации / регистрации */
+.auth-card {
+    background-color: rgba(19, 9, 36, 0.4);
+    border: 1px solid rgba(138, 92, 246, 0.2);
+    border-radius: 8px;
+    padding: 45px 40px;
+    width: 100%;
+    max-width: 480px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(5px);
+}
+
+/* Заголовок формы */
+.auth-header {
+    text-align: center;
+    margin-bottom: 35px;
+}
+
+.auth-header h2 {
+    font-size: 28px;
+    font-weight: 900;
+    color: #fff;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 8px;
+    text-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
+}
+
+.auth-header p {
+    color: #94a3b8;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+/* Группа полей ввода */
+.auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.form-group label {
+    color: #b9b3c4;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* Поля ввода (Инпуты) */
+.form-input {
+    width: 100%;
+    background: rgba(5, 2, 10, 0.6);
+    border: 1px solid rgba(138, 92, 246, 0.25);
+    padding: 14px 16px;
+    color: #fff;
+    font-size: 15px;
+    font-weight: 600;
+    border-radius: 4px;
+    outline: none;
+    transition: all 0.3s ease;
+    box-sizing: border-box;
+}
+
+.form-input::placeholder {
+    color: #4b5563;
+}
+
+.form-input:focus {
+    border-color: #a855f7;
+    background: rgba(5, 2, 10, 0.8);
+    box-shadow: 0 0 15px rgba(168, 85, 247, 0.2);
+}
+
+/* Опции под полями (Запомнить меня / Забыли пароль) */
+.form-options {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+    font-weight: 600;
+    margin-top: -4px;
+}
+
+/* Стилизация кастомного чекбокса */
+.remember-me {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #94a3b8;
+    cursor: pointer;
+    user-select: none;
+}
+
+.remember-me input {
+    display: none;
+}
+
+.custom-checkbox {
+    width: 16px;
+    height: 16px;
+    border: 1px solid rgba(138, 92, 246, 0.4);
+    border-radius: 3px;
+    background: rgba(5, 2, 10, 0.6);
+    position: relative;
+    transition: 0.2s;
+}
+
+.remember-me input:checked + .custom-checkbox {
+    background: #a855f7;
+    border-color: #a855f7;
+    box-shadow: 0 0 10px rgba(168, 85, 247, 0.4);
+}
+
+.remember-me input:checked + .custom-checkbox::after {
+    content: '';
+    position: absolute;
+    left: 5px;
+    top: 2px;
+    width: 4px;
+    height: 8px;
+    border: solid #fff;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+
+.forgot-password {
+    color: #a855f7;
+    transition: 0.2s;
+}
+
+.forgot-password:hover {
+    color: #fff;
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+}
+
+/* Ссылка на соглашение в регистрации */
+.policy-agreement {
+    font-size: 12px;
+    color: #64748b;
+    line-height: 1.5;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.policy-agreement a {
+    color: #94a3b8;
+    text-decoration: underline;
+    transition: color 0.2s;
+}
+
+.policy-agreement a:hover {
+    color: #a855f7;
+}
+
+/* Кнопка отправки внутри формы */
+.auth-form .btn {
+    width: 100%;
+    margin-top: 10px;
+}
+
+/* Переключатель между авторизацией и регистрацией в самом низу */
+.auth-switch {
+    text-align: center;
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(138, 92, 246, 0.1);
+    font-size: 14px;
+    color: #94a3b8;
+    font-weight: 600;
+}
+
+.auth-switch a {
+    color: #a855f7;
+    margin-left: 6px;
+    font-weight: 700;
+    transition: color 0.2s;
+}
+
+.auth-switch a:hover {
+    color: #fff;
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+}
+
+/* Адаптивность для мобильных экранов */
+@media (max-width: 480px) {
+    .auth-wrapper {
+        padding: 40px 15px;
+    }
+    .auth-card {
+        padding: 35px 20px;
+    }
+    .form-options {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+}
+
+
+/* ЛОГИН */
+
+/* Контейнер опций — по центру, друг под другом */
+.auth-options {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.7rem;
+    margin: 0.5rem 0 1.6rem;
+    font-size: 0.95rem;
+    text-align: center;
+}
+
+/* Сам лейбл "Запомнить меня" */
+.remember-me {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    cursor: pointer;
+    color: rgba(255, 255, 255, 0.78);
+    user-select: none;
+    transition: color 0.2s;
+}
+
+.remember-me:hover {
+    color: #fff;
+}
+
+/* Прячем настоящий чекбокс */
+.remember-me input[type="checkbox"] {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* Рисуем свой квадратик */
+.checkbox-box {
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
+    border: 2px solid rgba(183, 140, 255, 0.6);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+    flex-shrink: 0;
+}
+
+/* Галочка внутри (появляется при checked) */
+.remember-me input[type="checkbox"]:checked + .checkbox-box {
+    background: rgba(183, 140, 255, 0.15);
+    border-color: #b78cff;
+    box-shadow: 0 0 8px rgba(183, 140, 255, 0.6);
+}
+
+.remember-me input[type="checkbox"]:checked + .checkbox-box::after {
+    content: "";
+    width: 5px;
+    height: 9px;
+    border: solid #b78cff;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg) translate(-1px, -1px);
+    box-shadow: 0 0 6px #b78cff;
+}
+
+/* Подсветка при наведении */
+.remember-me:hover .checkbox-box {
+    border-color: #b78cff;
+    box-shadow: 0 0 8px rgba(183, 140, 255, 0.5);
+}
+
+/* Доступность: фокус с клавиатуры */
+.remember-me input[type="checkbox"]:focus-visible + .checkbox-box {
+    box-shadow: 0 0 0 3px rgba(183, 140, 255, 0.35);
+}
+
+/* Ссылка "Забыли пароль?" */
+.forgot-link {
+    color: #b78cff;
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+.forgot-link:hover {
+    color: #fff;
+    text-decoration: underline;
+}

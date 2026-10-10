@@ -76,7 +76,8 @@
             <a href="donate.html" class="active">Донат</a>
             <a href="team.html">Команда</a>
             <a href="faq.html">FAQ</a>
-            <button class="btn-login" id="auth-btn">Вход</button>
+
+            <button class="btn-login" id="nav-login-btn">Вход</button>
         </nav>
     </header>
 
@@ -124,8 +125,9 @@
 
             <!-- Подвал корзины -->
             <div class="cart-footer">
-                <label style="color: #64748b; font-size: 12px; font-weight: 700; text-transform: uppercase; display: block; margin-bottom: 5px;">Ваш SteamID / Ник:</label>
                 
+                <label style="color: #64748b; font-size: 12px; font-weight: 700; text-transform: uppercase; display: block; margin-bottom: 5px;">Ваш SteamID / Ник:</label>
+                <input type="text" id="player-identity" class="steam-input" placeholder="STEAM_0:1:12345678 или ваш ник">
 
                 <div class="cart-total">
                     <span>Итого к оплате:</span>
@@ -309,34 +311,6 @@
             if(e.target === cartModal) cartModal.classList.remove('active'); 
         });
 
-        // ==========================================================================
-        // 5. ВАЛИДАЦИЯ И ОФОРМЛЕНИЕ ЗАКАЗА
-        // ==========================================================================
-        checkoutBtn.addEventListener('click', () => {
-            if (cart.length === 0) { 
-                alert('Ваша корзина пуста!'); 
-                return; 
-            }
-            const playerIdentity = playerIdentityInput.value.trim();
-            if (!playerIdentity) { 
-                alert('Пожалуйста, введите ваш SteamID или Ник для корректной выдачи!'); 
-                playerIdentityInput.focus(); 
-                return; 
-            }
-
-            const totalSum = cart.reduce((s, i) => s + (i.price * i.quantity), 0);
-            alert(`Заказ оформлен для игрока: ${playerIdentity}!\nИтоговая сумма: ${totalSum} ₽\n\nПеренаправляем на платежную систему...`);
-            
-            // Очищаем состояние после симуляции покупки
-            cart = []; 
-            playerIdentityInput.value = ''; 
-            updateCartUI(); 
-            cartModal.classList.remove('active');
-        });
-
-        // Первичный вызов для синхронизации корзины из памяти
-        updateCartUI();
-
 
 
         // ==========================================================================
@@ -383,5 +357,11 @@
         });
 
     </script>
+
+    <!-- Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase.js"></script>
+    <script src="auth-check.js"></script>
+
 </body>
 </html>

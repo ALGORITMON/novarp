@@ -1,31 +1,30 @@
-function checkAdminSession() {
-    const loginBtn = document.getElementById('nav-login-btn');
-    if (!loginBtn) return;
+// auth-check.js
 
-    // Проверяем, авторизован ли админ
-    if (localStorage.getItem('nova_admin_session') === 'active') {
-        loginBtn.innerText = "Выйти (Админ)";
-        loginBtn.classList.add('logged-in');
+async function isUserLoggedIn() {
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    return !!session;
+}
+
+async function setupNavLoginButton() {
+    const btn = document.getElementById('nav-login-btn');
+    if (!btn) return;
+
+    btn.onclick = null;
+
+    const loggedIn = await isUserLoggedIn();
+
+    if (loggedIn) {
+        btn.textContent = 'Профиль';
+        btn.onclick = () => { window.location.href = 'profile.html'; };
     } else {
-        loginBtn.innerText = "Вход";
-        loginBtn.classList.remove('logged-in');
+        btn.textContent = 'Вход';
+        btn.onclick = () => { window.location.href = 'login.html'; };
     }
 }
 
-// Что происходит при клике на кнопку в шапке
-function handleLoginClick() {
-    if (localStorage.getItem('nova_admin_session') === 'active') {
-        // Если вошел — разлогиниваем
-        if (confirm("Вы действительно хотите выйти из аккаунта администратора?")) {
-            localStorage.removeItem('nova_admin_session');
-            alert("Вы вышли из системы.");
-            window.location.reload(); // Перезагружаем текущую страницу
-        }
-    } else {
-        // Если не вошел — отправляем на страницу входа
-        window.location.href = "login.html";
-    }
+async function logout() {
+    await supabaseClient.auth.signOut();
+    window.location.href = 'index.html';
 }
 
-// Запускаем проверку при загрузке каждой страницы
-document.addEventListener("DOMContentLoaded", checkAdminSession);
+document.addEventListener('DOMContentLoaded', setupNavLoginButton);

@@ -24,7 +24,7 @@
             <a href="team.html" class="active">Команда</a>
             <a href="faq.html">FAQ</a>
 
-            <button class="btn-login" id="nav-login-btn" onclick="handleLoginClick()">Вход</button>
+            <button class="btn-login" id="nav-login-btn">Вход</button>
         </nav>
     </header>
 
@@ -110,7 +110,7 @@
         ];
 
         let teamData = JSON.parse(localStorage.getItem('nova_team')) || defaultTeam;
-        let isAdmin = localStorage.getItem('nova_admin_session') === 'active';
+        let isAdmin = true;   // TODO: заменить на проверку роли
 
         // Перевод рангов для вывода текста
         const rankLabels = {
@@ -144,7 +144,9 @@
             const container = document.getElementById('team-app');
             container.innerHTML = '';
 
-            const isUserLogged = localStorage.getItem('nova_admin_session') === 'active';
+            // TODO: заменить на проверку роли из Supabase
+            const isUserLogged = true;
+
             const toggleBtn = document.getElementById('editor-toggle-btn');
 
             if (toggleBtn) {
@@ -238,6 +240,9 @@
         renderTeam();
     </script>
 
+    <!-- Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase.js"></script>
     <script src="auth-check.js"></script>
 
 </body>

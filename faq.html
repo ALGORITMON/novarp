@@ -23,7 +23,7 @@
             <a href="team.html">Команда</a>
             <a href="faq.html" class="active">FAQ</a>
 
-            <button class="btn-login" id="nav-login-btn" onclick="handleLoginClick()">Вход</button>
+            <button class="btn-login" id="nav-login-btn">Вход</button>
         </nav>
     </header>
 
@@ -84,7 +84,7 @@
         ];
 
         let faqData = JSON.parse(localStorage.getItem('nova_faq')) || defaultFaq;
-        let isAdmin = localStorage.getItem('nova_admin_session') === 'active';
+        let isAdmin = true;   // TODO: заменить на проверку роли
 
         function saveData() {
             localStorage.setItem('nova_faq', JSON.stringify(faqData));
@@ -109,7 +109,7 @@
             const container = document.getElementById('faq-app');
             container.innerHTML = '';
 
-            const isUserLogged = localStorage.getItem('nova_admin_session') === 'active';
+            const isUserLogged = true;   // TODO: заменить на проверку роли
             const toggleBtn = document.getElementById('editor-toggle-btn');
 
             if (toggleBtn) {
@@ -201,6 +201,9 @@
         renderFaq();
     </script>
 
+    <!-- Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase.js"></script>
     <script src="auth-check.js"></script>
 
 </body>
