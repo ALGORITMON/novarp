@@ -41,8 +41,8 @@
 
             <form class="auth-form" id="reg-form" action="#" method="POST">
                 <div class="form-group">
-                    <label for="reg-username">Имя персонажа (Format: Name_Surname)</label>
-                    <input type="text" id="reg-username" class="form-input" placeholder="Alexander_Volkov" required autocomplete="username">
+                    <label for="reg-username">Никнейм</label>
+                    <input type="text" id="reg-username" class="form-input" placeholder="Например: alex_gromov" required autocomplete="username" minlength="3" maxlength="20">
                 </div>
 
                 <div class="form-group">
@@ -64,7 +64,7 @@
                     Нажимая кнопку регистрации, вы соглашаетесь с <a href="rules.html" target="_blank">правилами проекта</a> и <a href="policy.html" target="_blank">политикой конфиденциальности</a>.
                 </p>
 
-                <button type="submit" class="btn btn-primary">Создать персонажа</button>
+                <button type="submit" class="btn btn-primary">Создать аккаунт</button>
             </form>
 
             <div class="auth-switch">
@@ -123,9 +123,15 @@
                 return;
             }
 
-            // Проверка формата имени персонажа
-            if (!/^[A-Za-z]+_[A-Za-z]+$/.test(username)) {
-                alert('Имя должно быть в формате Name_Surname (латиница)');
+            // Проверка никнейма: 3-20 символов, латиница, цифры, _ и -
+            if (!/^[A-Za-z0-9_-]{3,20}$/.test(username)) {
+                alert('Никнейм: 3–20 символов, только латиница, цифры, _ и -');
+                return;
+            }
+
+            // Проверка длины пароля (по желанию)
+            if (password.length < 8) {
+                alert('Пароль должен быть не короче 8 символов');
                 return;
             }
 
@@ -138,7 +144,7 @@
                     password: password,
                     options: {
                         data: {
-                            username: username,  // сохраняем имя персонажа в метаданных
+                            username: username,   // сохраняем никнейм в метаданных
                         },
                         emailRedirectTo: 'https://algoritmon.github.io/novarp/login.html',
                     },
@@ -146,19 +152,17 @@
 
                 if (error) throw error;
 
-                // Если email-подтверждение включено — session будет null
                 if (!data.session) {
                     alert('Аккаунт создан! Проверьте почту для подтверждения, затем войдите.');
                     window.location.href = 'login.html';
                 } else {
-                    // Если подтверждение выключено — сразу редирект в профиль
                     window.location.href = 'profile.html';
                 }
 
             } catch (error) {
                 alert('Ошибка регистрации: ' + error.message);
                 submitBtn.disabled = false;
-                submitBtn.textContent = 'Создать персонажа';
+                submitBtn.textContent = 'Создать аккаунт';
             }
         });
     </script>
