@@ -76,49 +76,65 @@
         </div>
     </footer>
 
+    <!-- Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase.js"></script>
+    <script src="auth-check.js"></script>
+
     <script>
-        // Начальные вопросы по умолчанию
         const defaultFaq = [
             { q: "Как подключиться к серверу?", a: "Вы можете нажать кнопку 'Подключиться' на главной странице нашего сайта, либо скопировать IP-адрес и ввести в консоли игры Garry's Mod команду: connect ip_сервера." },
             { q: "Где скачать контент сервера?", a: "Контент сервера скачивается автоматически при первом заведении. Если у вас видны эмо-текстуры (розово-черные квадраты) или ERROR-модели, убедитесь, что у вас установлен и смонтирован контент Counter-Strike: Source." }
         ];
 
         let faqData = JSON.parse(localStorage.getItem('nova_faq')) || defaultFaq;
-        let isAdmin = true;   // TODO: заменить на проверку роли
+        let isAdmin = false;
+        let isPanelVisible = false;
+
+        async function checkAdminRole() {
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (!session) return false;
+
+            const { data } = await supabaseClient
+                .from('profiles')
+                .select('site_role')
+                .eq('id', session.user.id)
+                .single();
+
+            return data?.site_role === 'admin';
+        }
 
         function saveData() {
             localStorage.setItem('nova_faq', JSON.stringify(faqData));
             renderFaq();
         }
 
-        let isPanelVisible = false;
-
         function toggleEditorPanel() {
+            if (!isAdmin) {
+                alert('Доступ запрещён. Только для администраторов.');
+                return;
+            }
+
             isPanelVisible = !isPanelVisible;
             const adminPanel = document.getElementById('admin-panel');
             const toggleBtn = document.getElementById('editor-toggle-btn');
 
             if (adminPanel) adminPanel.style.display = isPanelVisible ? 'block' : 'none';
             if (toggleBtn) toggleBtn.innerText = isPanelVisible ? "Скрыть панель редактора" : "Режим редактора FAQ";
-
-            isAdmin = isPanelVisible; 
-            renderFaq(); 
         }
 
         function renderFaq() {
             const container = document.getElementById('faq-app');
             container.innerHTML = '';
 
-            const isUserLogged = true;   // TODO: заменить на проверку роли
             const toggleBtn = document.getElementById('editor-toggle-btn');
-
             if (toggleBtn) {
-                toggleBtn.style.display = isUserLogged ? 'inline-block' : 'none';
+                toggleBtn.style.display = isAdmin ? 'inline-block' : 'none';
             }
 
             faqData.forEach((item, idx) => {
                 const faqDiv = document.createElement('div');
-                faqDiv.className = 'rules-category'; // Используем уже готовые стили плашек
+                faqDiv.className = 'rules-category';
 
                 const headerWrap = document.createElement('div');
                 headerWrap.className = 'category-trigger-wrap';
@@ -159,6 +175,11 @@
         }
 
         function addFaqItem() {
+            if (!isAdmin) {
+                alert('Доступ запрещён');
+                return;
+            }
+
             const qInput = document.getElementById('new-faq-question');
             const aInput = document.getElementById('new-faq-answer');
             if (!qInput.value.trim() || !aInput.value.trim()) return alert("Заполните оба поля!");
@@ -170,6 +191,11 @@
         }
 
         function deleteFaqItem(idx) {
+            if (!isAdmin) {
+                alert('Доступ запрещён');
+                return;
+            }
+
             if (confirm("Удалить этот вопрос?")) {
                 faqData.splice(idx, 1);
                 saveData();
@@ -177,34 +203,37 @@
         }
 
         function exportFaqHTML() {
+            if (!isAdmin) {
+                alert('Доступ запрещён');
+                return;
+            }
+
             let htmlOutput = `<!-- СКОПИРУЙТЕ И ЗАМЕНИТЕ БЛОК #FAQ-APP В ВАШЕМ FAQ.HTML -->\n<div id="faq-app">`;
             faqData.forEach(item => {
                 htmlOutput += `\n  <div class="rules-category">
-    <button class="category-trigger" onclick="toggleFaq(this)">
-      <span>❓ ${item.q}</span>
-      <span class="arrow">▼</span>
-    </button>
-    <div class="category-content">
-      <div class="rule-item" style="border:none;">
-        <p style="font-size:15px; color:#c5c6c7;">${item.a}</p>
-      </div>
-    </div>
-  </div>`;
+        <button class="category-trigger" onclick="toggleFaq(this)">
+          <span>❓ ${item.q}</span>
+          <span class="arrow">▼</span>
+        </button>
+        <div class="category-content">
+          <div class="rule-item" style="border:none;">
+            <p style="font-size:15px; color:#c5c6c7;">${item.a}</p>
+          </div>
+        </div>
+      </div>`;
             });
             htmlOutput += `\n</div>`;
-            
+
             navigator.clipboard.writeText(htmlOutput).then(() => {
                 alert("Готовый HTML-код FAQ скопирован!");
             });
         }
 
-        renderFaq();
+        window.addEventListener('DOMContentLoaded', async () => {
+            isAdmin = await checkAdminRole();
+            renderFaq();
+        });
     </script>
-
-    <!-- Supabase -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="supabase.js"></script>
-    <script src="auth-check.js"></script>
 
 </body>
 </html>

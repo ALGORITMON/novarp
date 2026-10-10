@@ -90,13 +90,17 @@
         </div>
     </footer>
 
+    <!-- Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase.js"></script>
+    <script src="auth-check.js"></script>
+
     <script>
-        // Начальный состав по умолчанию
         const defaultTeam = [
             {
                 nick: "Основатель NOVA",
                 rank: "creator",
-                avatar: "https://dicebear.com", // Крутой робот-заглушка вместо аватарки
+                avatar: "https://dicebear.com",
                 discord: "nova_owner",
                 desc: "Главный создатель и идейный вдохновитель сервера. Занимается глобальным развитием."
             },
@@ -110,9 +114,8 @@
         ];
 
         let teamData = JSON.parse(localStorage.getItem('nova_team')) || defaultTeam;
-        let isAdmin = true;   // TODO: заменить на проверку роли
+        let isAdmin = false;   // будет переопределено через Supabase
 
-        // Перевод рангов для вывода текста
         const rankLabels = {
             creator: "Создатель",
             dev: "Разработчик",
@@ -121,43 +124,54 @@
             mod: "Модератор"
         };
 
+        let isPanelVisible = false;
+
+        // Проверка: админ или нет
+        async function checkAdminRole() {
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (!session) return false;
+
+            const { data } = await supabaseClient
+                .from('profiles')
+                .select('site_role')
+                .eq('id', session.user.id)
+                .single();
+
+            return data?.site_role === 'admin';
+        }
+
         function saveData() {
             localStorage.setItem('nova_team', JSON.stringify(teamData));
             renderTeam();
         }
 
-        let isPanelVisible = false;
-
         function toggleEditorPanel() {
+            if (!isAdmin) {
+                alert('Доступ запрещён. Только для администраторов.');
+                return;
+            }
+
             isPanelVisible = !isPanelVisible;
             const adminPanel = document.getElementById('admin-panel');
             const toggleBtn = document.getElementById('editor-toggle-btn');
 
             if (adminPanel) adminPanel.style.display = isPanelVisible ? 'block' : 'none';
             if (toggleBtn) toggleBtn.innerText = isPanelVisible ? "Скрыть панель редактора" : "Режим редактора Команды";
-
-            isAdmin = isPanelVisible; 
-            renderTeam(); 
         }
 
         function renderTeam() {
             const container = document.getElementById('team-app');
             container.innerHTML = '';
 
-            // TODO: заменить на проверку роли из Supabase
-            const isUserLogged = true;
-
             const toggleBtn = document.getElementById('editor-toggle-btn');
-
             if (toggleBtn) {
-                toggleBtn.style.display = isUserLogged ? 'inline-block' : 'none';
+                toggleBtn.style.display = isAdmin ? 'inline-block' : 'none';
             }
 
             teamData.forEach((member, idx) => {
                 const card = document.createElement('div');
-                card.className = `job-card team-card`; // Переиспользуем стили карточек
+                card.className = `job-card team-card`;
 
-                // Определяем дефолтную аватарку, если поле пустое
                 const avatarUrl = member.avatar.trim() || `https://dicebear.com{member.nick}`;
 
                 card.innerHTML = `
@@ -187,6 +201,11 @@
         }
 
         function addTeamMember() {
+            if (!isAdmin) {
+                alert('Доступ запрещён');
+                return;
+            }
+
             const nick = document.getElementById('admin-nick').value;
             const rank = document.getElementById('admin-rank').value;
             const avatar = document.getElementById('admin-avatar').value;
@@ -196,17 +215,21 @@
             if (!nick.trim() || !discord.trim()) return alert("Заполните хотя бы никнейм и Связь!");
 
             teamData.push({ nick, rank, avatar, discord, desc: desc || "Участник команды сервера NOVA RP." });
-            
-            // Очистка полей
+
             document.getElementById('admin-nick').value = '';
             document.getElementById('admin-avatar').value = '';
             document.getElementById('admin-discord').value = '';
             document.getElementById('admin-desc').value = '';
-            
+
             saveData();
         }
 
         function deleteMember(idx) {
+            if (!isAdmin) {
+                alert('Доступ запрещён');
+                return;
+            }
+
             if (confirm("Удалить этого участника из списка команды?")) {
                 teamData.splice(idx, 1);
                 saveData();
@@ -214,36 +237,40 @@
         }
 
         function exportTeamHTML() {
+            if (!isAdmin) {
+                alert('Доступ запрещён');
+                return;
+            }
+
             let htmlOutput = `<!-- СКОПИРУЙТЕ И ЗАМЕНИТЕ БЛОК #TEAM-APP В ВАШЕМ TEAM.HTML -->\n<div class="team-grid" id="team-app">`;
-            
+
             teamData.forEach(member => {
                 const avatarUrl = member.avatar.trim() || `https://dicebear.com{member.nick}`;
                 htmlOutput += `\n  <div class="job-card team-card">
-    <div class="job-badge rank-badge-${member.rank}">${rankLabels[member.rank]}</div>
-    <div class="team-avatar-wrap">
-      <img src="${avatarUrl}" alt="${member.nick}" class="team-avatar">
-    </div>
-    <h3>${member.nick}</h3>
-    <p class="job-desc" style="margin-bottom: 15px;">${member.desc}</p>
-    <div class="job-stats" style="margin-top: auto; padding-top: 15px;">
-      <div><span>Связь:</span> <strong style="color: #6366f1;">${member.discord}</strong></div>
-    </div>
-  </div>`;
+        <div class="job-badge rank-badge-${member.rank}">${rankLabels[member.rank]}</div>
+        <div class="team-avatar-wrap">
+          <img src="${avatarUrl}" alt="${member.nick}" class="team-avatar">
+        </div>
+        <h3>${member.nick}</h3>
+        <p class="job-desc" style="margin-bottom: 15px;">${member.desc}</p>
+        <div class="job-stats" style="margin-top: auto; padding-top: 15px;">
+          <div><span>Связь:</span> <strong style="color: #6366f1;">${member.discord}</strong></div>
+        </div>
+      </div>`;
             });
             htmlOutput += `\n</div>`;
-            
+
             navigator.clipboard.writeText(htmlOutput).then(() => {
                 alert("HTML-код сетки команды скопирован!");
             });
         }
 
-        renderTeam();
+        // === СТАРТ ===
+        window.addEventListener('DOMContentLoaded', async () => {
+            isAdmin = await checkAdminRole();
+            renderTeam();
+        });
     </script>
-
-    <!-- Supabase -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="supabase.js"></script>
-    <script src="auth-check.js"></script>
 
 </body>
 </html>
