@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Админ-панель — NOVA RP</title>
+
+    <link rel="preconnect" href="https://googleapis.com">
+    <link rel="preconnect" href="https://gstatic.com" crossorigin>
+    <link href="https://googleapis.com/css2?family=Nunito:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="space-veil">
+        <div class="nebula-cloud cloud-1"></div>
+        <div class="nebula-cloud cloud-2"></div>
+    </div>
+
+    <header>
+        <div class="logo"><a href="index.html">NOVA <span>RP</span></a></div>
+        <nav>
+            <a href="index.html">Главная</a>
+            <a href="rules.html">Правила</a>
+            <a href="jobs.html">Профессии</a>
+            <a href="donate.html">Донат</a>
+            <a href="team.html">Команда</a>
+            <a href="faq.html">FAQ</a>
+            <button class="btn-login" id="nav-login-btn">Вход</button>
+        </nav>
+    </header>
+
+    <main class="admin-container">
+        <div class="admin-header">
+            <div>
+                <h1>Админ-панель <span class="accent-text">NOVA RP</span></h1>
+                <p>Управление пользователями, ролями и игровыми данными</p>
+            </div>
+        </div>
+
+        <!-- Сводка -->
+        <div class="admin-stats" id="admin-stats">
+            <div class="admin-stat-card stat-total">
+                <div class="stat-value" id="stat-total">—</div>
+                <div class="stat-label">Всего юзеров</div>
+            </div>
+            <div class="admin-stat-card stat-admins">
+                <div class="stat-value" id="stat-admins">—</div>
+                <div class="stat-label">Админов</div>
+            </div>
+            <div class="admin-stat-card stat-mods">
+                <div class="stat-value" id="stat-mods">—</div>
+                <div class="stat-label">Модераторов</div>
+            </div>
+            <div class="admin-stat-card stat-users">
+                <div class="stat-value" id="stat-users">—</div>
+                <div class="stat-label">Обычных</div>
+            </div>
+        </div>
+
+        <!-- Панель инструментов -->
+        <div class="admin-toolbar">
+            <input type="text" id="admin-search" class="admin-search" placeholder="Поиск по нику или email...">
+            <div class="admin-filters">
+                <button class="admin-filter-btn active" data-filter="all">Все</button>
+                <button class="admin-filter-btn" data-filter="admin">Админы</button>
+                <button class="admin-filter-btn" data-filter="mod">Модераторы</button>
+                <button class="admin-filter-btn" data-filter="user">Обычные</button>
+            </div>
+        </div>
+
+        <!-- Таблица юзеров -->
+        <div class="admin-table-wrap">
+            <div class="admin-loading" id="admin-loading">Загрузка пользователей...</div>
+            <table class="admin-table" id="admin-table" style="display: none;">
+                <thead>
+                    <tr>
+                        <th>Ник</th>
+                        <th>Email</th>
+                        <th>Роль</th>
+                        <th>Деньги</th>
+                        <th>Время</th>
+                        <th>Профессия</th>
+                        <th>Действия</th>
+                    </tr>
+                </thead>
+                <tbody id="admin-tbody"></tbody>
+            </table>
+        </div>
+    </main>
+
+    <!-- Модалка выдачи денег -->
+    <div class="admin-modal-overlay" id="money-modal">
+        <div class="admin-modal">
+            <h3>Выдать деньги</h3>
+            <label for="money-amount">Сумма</label>
+            <input type="number" id="money-amount" placeholder="Например: 50000" min="1">
+            <div class="admin-modal-buttons">
+                <button class="btn btn-secondary" onclick="closeMoneyModal()">Отмена</button>
+                <button class="btn btn-primary" id="confirm-money-btn">Выдать</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модалка смены роли -->
+    <div class="admin-modal-overlay" id="role-modal">
+        <div class="admin-modal">
+            <h3>Сменить роль</h3>
+            <label for="role-select">Новая роль</label>
+            <select id="role-select">
+                <option value="user">User (обычный игрок)</option>
+                <option value="mod">Mod (модератор)</option>
+                <option value="admin">Admin (полный доступ)</option>
+            </select>
+            <div class="admin-modal-buttons">
+                <button class="btn btn-secondary" onclick="closeRoleModal()">Отмена</button>
+                <button class="btn btn-primary" id="confirm-role-btn">Применить</button>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <div class="footer-grid">
+            <div class="footer-col">
+                <div class="footer-logo">NOVA <span>RP</span></div>
+                <p class="footer-desc">Игровой проект в Garry's Mod</p>
+            </div>
+            <div class="footer-col">
+                <h4>Документы</h4>
+                <a href="terms.pdf">Пользовательское соглашение</a>
+                <a href="privacy.pdf">Политика конфиденциальности</a>
+            </div>
+            <div class="footer-col">
+                <h4>Поддержка</h4>
+                <a href="mailto:novarpgmod.support@gmail.com">novarpgmod.support@gmail.com</a>
+                <a href="faq.html">FAQ</a>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            &copy; 2026 NOVA RP. Все права защищены.
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase.js"></script>
+    <script src="auth-check.js"></script>
+
+    <script>
+        let allUsers = [];
+        let currentFilter = 'all';
+        let pendingMoneyUserId = null;
+        let pendingRoleUserId = null;
+
+        // === ПРОВЕРКА ДОСТУПА ===
+        async function checkAdminAccess() {
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (!session) return false;
+
+            const { data, error } = await supabaseClient
+                .from('profiles')
+                .select('role')
+                .eq('id', session.user.id)
+                .single();
+
+            if (error || !data) return false;
+            return data.role === 'admin';
+        }
+
+        // === ЗАГРУЗКА ВСЕХ ЮЗЕРОВ ===
+        async function loadUsers() {
+            const { data, error } = await supabaseClient
+                .from('profiles')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            if (error) {
+                alert('Ошибка загрузки: ' + error.message);
+                return;
+            }
+
+            allUsers = data || [];
+            updateStats();
+            renderTable();
+        }
+
+        // === ОБНОВЛЕНИЕ СВОДКИ ===
+        function updateStats() {
+            const total = allUsers.length;
+            const admins = allUsers.filter(u => u.role === 'admin').length;
+            const mods = allUsers.filter(u => u.role === 'mod').length;
+            const users = allUsers.filter(u => u.role === 'user').length;
+
+            document.getElementById('stat-total').textContent = total;
+            document.getElementById('stat-admins').textContent = admins;
+            document.getElementById('stat-mods').textContent = mods;
+            document.getElementById('stat-users').textContent = users;
+        }
+
+        // === РЕНДЕР ТАБЛИЦЫ ===
+        function renderTable() {
+            const tbody = document.getElementById('admin-tbody');
+            const loading = document.getElementById('admin-loading');
+            const table = document.getElementById('admin-table');
+            tbody.innerHTML = '';
+
+            const search = document.getElementById('admin-search').value.toLowerCase().trim();
+
+            const filtered = allUsers.filter(u => {
+                const matchFilter = currentFilter === 'all' || u.role === currentFilter;
+                const matchSearch = !search 
+                    || u.username.toLowerCase().includes(search)
+                    || u.email.toLowerCase().includes(search);
+                return matchFilter && matchSearch;
+            });
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding: 40px; color:#64748b;">Ничего не найдено</td></tr>`;
+            } else {
+                filtered.forEach(u => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td><span class="admin-username">${escapeHtml(u.username)}</span></td>
+                        <td><span class="admin-email">${escapeHtml(u.email)}</span></td>
+                        <td><span class="role-badge role-${u.role}">${roleLabel(u.role)}</span></td>
+                        <td>$${(u.money || 0).toLocaleString('ru-RU')}</td>
+                        <td>${u.playtime || 0} мин.</td>
+                        <td>${escapeHtml(u.job || 'Гражданин')}</td>
+                        <td>
+                            <div class="admin-actions">
+                                <button class="admin-action-btn btn-money" onclick="openMoneyModal('${u.id}')">💰 Деньги</button>
+                                <button class="admin-action-btn" onclick="openRoleModal('${u.id}')">🎭 Роль</button>
+                                <button class="admin-action-btn btn-danger" onclick="deleteUser('${u.id}', '${escapeAttr(u.username)}')">🗑️</button>
+                            </div>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+
+            loading.style.display = 'none';
+            table.style.display = 'table';
+        }
+
+        function roleLabel(role) {
+            return { admin: 'Admin', mod: 'Mod', user: 'User' }[role] || role;
+        }
+
+        function escapeHtml(str) {
+            return String(str || '').replace(/[&<>"']/g, m => (
+                { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]
+            ));
+        }
+
+        function escapeAttr(str) {
+            return String(str || '').replace(/'/g, "\\'");
+        }
+
+        // === МОДАЛКА: ВЫДАТЬ ДЕНЬГИ ===
+        window.openMoneyModal = function(userId) {
+            pendingMoneyUserId = userId;
+            document.getElementById('money-amount').value = '';
+            document.getElementById('money-modal').classList.add('active');
+        };
+
+        window.closeMoneyModal = function() {
+            document.getElementById('money-modal').classList.remove('active');
+            pendingMoneyUserId = null;
+        };
+
+        document.getElementById('confirm-money-btn').addEventListener('click', async () => {
+            const amount = parseInt(document.getElementById('money-amount').value);
+            if (!amount || amount <= 0) {
+                alert('Введите корректную сумму');
+                return;
+            }
+
+            const user = allUsers.find(u => u.id === pendingMoneyUserId);
+            if (!user) return;
+
+            const newMoney = (user.money || 0) + amount;
+
+            const { error } = await supabaseClient
+                .from('profiles')
+                .update({ money: newMoney })
+                .eq('id', pendingMoneyUserId);
+
+            if (error) {
+                alert('Ошибка: ' + error.message);
+                return;
+            }
+
+            user.money = newMoney;
+            renderTable();
+            updateStats();
+            closeMoneyModal();
+        });
+
+        // === МОДАЛКА: СМЕНА РОЛИ ===
+        window.openRoleModal = function(userId) {
+            pendingRoleUserId = userId;
+            const user = allUsers.find(u => u.id === userId);
+            document.getElementById('role-select').value = user?.role || 'user';
+            document.getElementById('role-modal').classList.add('active');
+        };
+
+        window.closeRoleModal = function() {
+            document.getElementById('role-modal').classList.remove('active');
+            pendingRoleUserId = null;
+        };
+
+        document.getElementById('confirm-role-btn').addEventListener('click', async () => {
+            const newRole = document.getElementById('role-select').value;
+
+            const { error } = await supabaseClient
+                .from('profiles')
+                .update({ role: newRole })
+                .eq('id', pendingRoleUserId);
+
+            if (error) {
+                alert('Ошибка: ' + error.message);
+                return;
+            }
+
+            const user = allUsers.find(u => u.id === pendingRoleUserId);
+            if (user) user.role = newRole;
+
+            renderTable();
+            updateStats();
+            closeRoleModal();
+        });
+
+        // === УДАЛЕНИЕ ЮЗЕРА ===
+        window.deleteUser = async function(userId, username) {
+            if (!confirm(`Удалить пользователя "${username}"? Это действие необратимо.`)) return;
+
+            const { error } = await supabaseClient
+                .from('profiles')
+                .delete()
+                .eq('id', userId);
+
+            if (error) {
+                alert('Ошибка: ' + error.message + '\n\nДля удаления из auth.users нужно использовать Edge Function или Dashboard.');
+                return;
+            }
+
+            allUsers = allUsers.filter(u => u.id !== userId);
+            renderTable();
+            updateStats();
+        };
+
+        // === ФИЛЬТРЫ ===
+        document.querySelectorAll('.admin-filter-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.admin-filter-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentFilter = btn.dataset.filter;
+                renderTable();
+            });
+        });
+
+        // === ПОИСК ===
+        document.getElementById('admin-search').addEventListener('input', renderTable);
+
+        // === ЗАКРЫТИЕ МОДАЛОК ПО КЛИКУ ВНЕ ===
+        document.querySelectorAll('.admin-modal-overlay').forEach(overlay => {
+            overlay.addEventListener('click', e => {
+                if (e.target === overlay) {
+                    overlay.classList.remove('active');
+                }
+            });
+        });
+
+        // === СТАРТ ===
+        window.addEventListener('DOMContentLoaded', async () => {
+            const isAdmin = await checkAdminAccess();
+            if (!isAdmin) {
+                alert('Доступ запрещён. Только для администраторов.');
+                window.location.href = 'index.html';
+                return;
+            }
+            await loadUsers();
+        });
+    </script>
+
+</body>
+</html>

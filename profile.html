@@ -189,8 +189,10 @@
             <div class="user-sid" id="email-display">example@domain.com</div>
 
             <ul class="lk-nav">
-                <li><a href="#" class="active" onclick="switchTab('main')"><i class="fa-solid fa-gauge"></i> Общая информация</a></li>
-                <li><a href="#" onclick="switchTab('settings')"><i class="fa-solid fa-sliders"></i> Настройки аккаунта</a></li>
+                <li><a href="#" class="active" onclick="switchTab('main', this)"><i class="fa-solid fa-gauge"></i> Общая информация</a></li>
+                <li id="admin-nav-item" style="display: none;"><a href="admin.html" style="color: #f87171;"><i class="fa-solid fa-shield-halved"></i> Админ-панель</a>
+                </li>
+                <li><a href="#" onclick="switchTab('settings', this)"><i class="fa-solid fa-sliders"></i> Настройки аккаунта</a></li>
                 <li><a href="#" style="color: #ef4444;" onclick="logout()"><i class="fa-solid fa-right-from-bracket"></i> Выйти из аккаунта</a></li>
             </ul>
         </aside>
@@ -295,56 +297,64 @@
     <!-- Скрипт логики Личного Кабинета -->
     <script>
         // Функция переключения вкладок в ЛК
-        function switchTab(tabName) {
-            // Скрываем все блоки контента ЛК
+        function switchTab(tabName, el) {
             document.getElementById('tab-main').style.display = 'none';
             document.getElementById('tab-settings').style.display = 'none';
 
-            // Убираем активный класс со всех ссылок в меню
-            const navLinks = document.querySelectorAll('.lk-nav a');
-            navLinks.forEach(link => link.classList.remove('active'));
+            document.querySelectorAll('.lk-nav a').forEach(a => a.classList.remove('active'));
 
-            // Показываем нужный блок и делаем кликнутую ссылку активной
             document.getElementById(`tab-${tabName}`).style.display = 'block';
-            if (event && event.currentTarget) {
-                event.currentTarget.classList.add('active');
-            }
+            if (el) el.classList.add('active');
         }
 
-        // Заполнение ЛК данными (Имитация или чтение из сессии авторизации)
         async function initProfile() {
             // 1. Проверяем, залогинен ли пользователь
             const { data: { session } } = await supabaseClient.auth.getSession();
             
             if (!session) {
-                // Не залогинен → отправляем на логин
                 window.location.href = 'login.html';
                 return;
             }
 
             // 2. Берём данные пользователя из Supabase
             const user = session.user;
-            const username = user.user_metadata?.username || 'Безымянный';
             const email = user.email;
 
-            // 3. Заполняем шапку ЛК реальными данными
+            // 3. Тянем профиль из таблицы profiles
+            const { data: profile, error } = await supabaseClient
+                .from('profiles')
+                .select('username, role, money, playtime, job, warns')
+                .eq('id', user.id)
+                .single();
+
+            // Если профиля нет — используем метаданные как fallback
+            const username = profile?.username || user.user_metadata?.username || 'Безымянный';
+            const role = profile?.role || 'user';
+
+            // 4. Заполняем шапку ЛК
             document.getElementById('username-display').innerText = username;
             document.getElementById('email-display').innerText = email;
 
-            // 4. Игровая статистика — пока заглушка, позже из вашей таблицы в Supabase
-            document.getElementById('money-display').innerText = '$0';
-            document.getElementById('rub-display').innerText = '0 ₽';
-            document.getElementById('time-display').innerText = '0 ч.';
-            document.getElementById('job-display').innerText = 'Гражданин';
-            document.getElementById('rank-display').innerText = 'Player';
-            document.getElementById('warns-display').innerText = '0 / 3';
+            // 5. Игровая статистика — из profiles
+            document.getElementById('money-display').innerText = '$' + (profile?.money || 0).toLocaleString('ru-RU');
+            document.getElementById('rub-display').innerText = '0 ₽'; // донат-баланс пока нет
+            document.getElementById('time-display').innerText = Math.floor((profile?.playtime || 0) / 60) + ' ч.';
+            document.getElementById('job-display').innerText = profile?.job || 'Гражданин';
+            document.getElementById('rank-display').innerText = roleLabel(role);
+            document.getElementById('warns-display').innerText = (profile?.warns || 0) + ' / 3';
+
+            // 6. Показываем ссылку «Админ-панель» только для админов
+            if (role === 'admin') {
+                document.getElementById('admin-nav-item').style.display = 'block';
+            }
         }
 
-        // Кнопка выхода — используем глобальную logout() из auth-check.js
-        // Удалите локальную logout() из profile.html, чтобы не конфликтовала
+        function roleLabel(role) {
+            return { admin: 'Admin', mod: 'Moderator', user: 'Player' }[role] || 'Player';
+        }
 
         window.addEventListener('DOMContentLoaded', initProfile);
-
     </script>
+    
 </body>
 </html>
