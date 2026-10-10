@@ -158,12 +158,12 @@
 
             const { data, error } = await supabaseClient
                 .from('profiles')
-                .select('role')
+                .select('site_role')
                 .eq('id', session.user.id)
                 .single();
 
             if (error || !data) return false;
-            return data.role === 'admin';
+            return data.site_role === 'admin';
         }
 
         // === ЗАГРУЗКА ВСЕХ ЮЗЕРОВ ===
@@ -186,9 +186,9 @@
         // === ОБНОВЛЕНИЕ СВОДКИ ===
         function updateStats() {
             const total = allUsers.length;
-            const admins = allUsers.filter(u => u.role === 'admin').length;
-            const mods = allUsers.filter(u => u.role === 'mod').length;
-            const users = allUsers.filter(u => u.role === 'user').length;
+            const admins = allUsers.filter(u => u.site_role === 'admin').length;
+            const mods = allUsers.filter(u => u.site_role === 'mod').length;
+            const users = allUsers.filter(u => u.site_role === 'user').length;
 
             document.getElementById('stat-total').textContent = total;
             document.getElementById('stat-admins').textContent = admins;
@@ -206,8 +206,8 @@
             const search = document.getElementById('admin-search').value.toLowerCase().trim();
 
             const filtered = allUsers.filter(u => {
-                const matchFilter = currentFilter === 'all' || u.role === currentFilter;
-                const matchSearch = !search 
+                const matchFilter = currentFilter === 'all' || u.site_role === currentFilter;
+                const matchSearch = !search
                     || u.username.toLowerCase().includes(search)
                     || u.email.toLowerCase().includes(search);
                 return matchFilter && matchSearch;
@@ -221,7 +221,7 @@
                     tr.innerHTML = `
                         <td><span class="admin-username">${escapeHtml(u.username)}</span></td>
                         <td><span class="admin-email">${escapeHtml(u.email)}</span></td>
-                        <td><span class="role-badge role-${u.role}">${roleLabel(u.role)}</span></td>
+                        <td><span class="role-badge role-${u.site_role}">${roleLabel(u.site_role)}</span></td>
                         <td>$${(u.money || 0).toLocaleString('ru-RU')}</td>
                         <td>${u.playtime || 0} мин.</td>
                         <td>${escapeHtml(u.job || 'Гражданин')}</td>
@@ -299,7 +299,7 @@
         window.openRoleModal = function(userId) {
             pendingRoleUserId = userId;
             const user = allUsers.find(u => u.id === userId);
-            document.getElementById('role-select').value = user?.role || 'user';
+            document.getElementById('role-select').value = user?.site_role || 'user';
             document.getElementById('role-modal').classList.add('active');
         };
 
@@ -313,7 +313,7 @@
 
             const { error } = await supabaseClient
                 .from('profiles')
-                .update({ role: newRole })
+                .update({ site_role: newRole })
                 .eq('id', pendingRoleUserId);
 
             if (error) {
@@ -322,7 +322,7 @@
             }
 
             const user = allUsers.find(u => u.id === pendingRoleUserId);
-            if (user) user.role = newRole;
+            if (user) user.site_role = newRole;
 
             renderTable();
             updateStats();
