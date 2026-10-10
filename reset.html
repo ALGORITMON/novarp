@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Сброс пароля | NOVA RP</title>
+
+    <link rel="preconnect" href="https://googleapis.com">
+    <link rel="preconnect" href="https://gstatic.com" crossorigin>
+    <link href="https://googleapis.com/css2?family=Nunito:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="space-veil">
+        <div class="nebula-cloud cloud-1"></div>
+        <div class="nebula-cloud cloud-2"></div>
+    </div>
+
+    <header>
+        <div class="logo"><a href="index.html">NOVA <span>RP</span></a></div>
+        <nav>
+            <a href="index.html">Главная</a>
+            <a href="rules.html">Правила</a>
+            <a href="jobs.html">Профессии</a>
+            <a href="donate.html">Донат</a>
+            <a href="team.html">Команда</a>
+            <a href="faq.html">FAQ</a>
+
+            <button class="btn-login" id="nav-login-btn">Вход</button>
+        </nav>
+    </header>
+
+    <main class="auth-wrapper">
+        <div class="auth-card">
+            <div class="auth-header">
+                <h2>Сброс пароля</h2>
+                <p>Введите email — мы отправим ссылку для смены пароля</p>
+            </div>
+
+            <form class="auth-form" id="reset-form">
+                <div class="form-group">
+                    <label for="reset-email">Электронная почта (E-mail)</label>
+                    <input type="email" id="reset-email" class="form-input" placeholder="example@domain.com" required autocomplete="email">
+                </div>
+
+                <button type="submit" class="btn btn-primary">Отправить ссылку</button>
+            </form>
+
+            <div class="auth-switch">
+                Вспомнили пароль?<a href="login.html">Войти</a>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <div class="footer-grid">
+            <div class="footer-col">
+                <div class="footer-logo">NOVA <span>RP</span></div>
+                <p class="footer-desc">Игровой проект в Garry's Mod</p>
+            </div>
+            <div class="footer-col">
+                <h4>Документы</h4>
+                <a href="terms.pdf">Пользовательское соглашение</a>
+                <a href="privacy.pdf">Политика конфиденциальности</a>
+            </div>
+            <div class="footer-col">
+                <h4>Поддержка</h4>
+                <a href="mailto:novarpgmod.support@gmail.com">novarpgmod.support@gmail.com</a>
+                <a href="faq.html">FAQ</a>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            &copy; 2026 NOVA RP. Все права защищены.
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase.js"></script>
+    <script src="auth-check.js"></script>
+
+    <script>
+        document.getElementById('reset-form').addEventListener('submit', async function (e) {
+            e.preventDefault();
+
+            const email = document.getElementById('reset-email').value.trim();
+            const submitBtn = this.querySelector('button[type="submit"]');
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Отправка...';
+
+            const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
+                redirectTo: 'https://algoritmon.github.io/novarp/update-password.html'
+            });
+
+            if (error) {
+                alert('Ошибка: ' + error.message);
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Отправить ссылку';
+                return;
+            }
+
+            alert('Если такой email зарегистрирован — письмо со ссылкой для сброса пароля отправлено.\n\nПроверьте почту и спам.');
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Отправить ссылку';
+            document.getElementById('reset-email').value = '';
+        });
+    </script>
+
+</body>
+</html>
