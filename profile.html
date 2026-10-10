@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Личный кабинет — NOVA RP</title>
     <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="https://cloudflare.com">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
         /* Стили игрового личного кабинета */
         .profile-container {
@@ -174,7 +174,7 @@
             <a href="team.html">Команда</a>
             <a href="faq.html">FAQ</a>
 
-            <button class="btn-login active" id="nav-login-btn" onclick="location.href='profile.html'">Кабинет</button>
+            <button class="btn-login" id="nav-login-btn">Вход</button>
         </nav>
     </header>
 
@@ -186,7 +186,7 @@
                 <i class="fa-solid fa-user-shield"></i>
             </div>
             <div class="user-name" id="username-display">Загрузка...</div>
-            <div class="user-sid" id="steamid-display">STEAM_0:0:00000000</div>
+            <div class="user-sid" id="email-display">example@domain.com</div>
 
             <ul class="lk-nav">
                 <li><a href="#" class="active" onclick="switchTab('main')"><i class="fa-solid fa-gauge"></i> Общая информация</a></li>
@@ -329,7 +329,7 @@
 
             // 3. Заполняем шапку ЛК реальными данными
             document.getElementById('username-display').innerText = username;
-            document.getElementById('steamid-display').innerText = email;
+            document.getElementById('email-display').innerText = email;
 
             // 4. Игровая статистика — пока заглушка, позже из вашей таблицы в Supabase
             document.getElementById('money-display').innerText = '$0';
