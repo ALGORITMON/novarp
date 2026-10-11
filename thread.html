@@ -69,484 +69,575 @@
     <script src="supabase.js"></script>
     <script src="auth-check.js"></script>
 
-    <script>
-        const urlParams = new URLSearchParams(window.location.search);
-        const threadId = urlParams.get('id');
-        let currentUser = null;
-        let currentProfile = null;
-        let currentThread = null;
-        let editingPostId = null;
+<script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const threadId = urlParams.get('id');
+    let currentUser = null;
+    let currentProfile = null;
+    let currentThread = null;
+    let threadLikes = 0;
+    let threadLiked = false;
+    let postLikes = {};
+    let myLikes = {};
 
-        function escapeHtml(str) {
-            return String(str || '').replace(/[&<>"']/g, m => (
-                { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]
-            ));
+    function escapeHtml(str) {
+        return String(str || '').replace(/[&<>"']/g, m => (
+            { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]
+        ));
+    }
+
+    function timeAgo(dateStr) {
+        const date = new Date(dateStr);
+        const diff = Math.floor((Date.now() - date.getTime()) / 1000);
+        if (diff < 60) return 'только что';
+        if (diff < 3600) return Math.floor(diff / 60) + ' мин. назад';
+        if (diff < 86400) return Math.floor(diff / 3600) + ' ч. назад';
+        if (diff < 2592000) return Math.floor(diff / 86400) + ' дн. назад';
+        return date.toLocaleDateString('ru-RU');
+    }
+
+    function getInitials(nick) {
+        return (nick || '?').substring(0, 2).toUpperCase();
+    }
+
+    function canModify(authorId) {
+        if (!currentUser) return false;
+        if (currentUser.id === authorId) return true;
+        const role = currentProfile?.site_role;
+        return role === 'admin' || role === 'mod';
+    }
+
+    function isModerator() {
+        const role = currentProfile?.site_role;
+        return role === 'admin' || role === 'mod';
+    }
+
+    async function init() {
+        if (!threadId) {
+            document.getElementById('thread-content').innerHTML = '<div class="forum-empty">Тема не найдена</div>';
+            return;
         }
 
-        function timeAgo(dateStr) {
-            const date = new Date(dateStr);
-            const diff = Math.floor((Date.now() - date.getTime()) / 1000);
-            if (diff < 60) return 'только что';
-            if (diff < 3600) return Math.floor(diff / 60) + ' мин. назад';
-            if (diff < 86400) return Math.floor(diff / 3600) + ' ч. назад';
-            if (diff < 2592000) return Math.floor(diff / 86400) + ' дн. назад';
-            return date.toLocaleDateString('ru-RU');
-        }
-
-        function getInitials(nick) {
-            return (nick || '?').substring(0, 2).toUpperCase();
-        }
-
-        function canModify(authorId) {
-            if (!currentUser) return false;
-            if (currentUser.id === authorId) return true;
-            const role = currentProfile?.site_role;
-            return role === 'admin' || role === 'mod';
-        }
-
-        function isModerator() {
-            const role = currentProfile?.site_role;
-            return role === 'admin' || role === 'mod';
-        }
-
-        async function init() {
-            if (!threadId) {
-                document.getElementById('thread-content').innerHTML = '<div class="forum-empty">Тема не найдена</div>';
-                return;
-            }
-
-            const { data: { session } } = await supabaseClient.auth.getSession();
-            if (session) {
-                currentUser = session.user;
-                const { data } = await supabaseClient
-                    .from('profiles')
-                    .select('username, site_role, avatar_url')
-                    .eq('id', currentUser.id)
-                    .single();
-                currentProfile = data;
-            }
-
-            await loadThread();
-        }
-
-        async function loadThread() {
-            const container = document.getElementById('thread-content');
-
-            const { data: thread, error } = await supabaseClient
-                .from('forum_threads')
-                .select('*, forum_categories(slug, title, icon)')
-                .eq('id', threadId)
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (session) {
+            currentUser = session.user;
+            const { data } = await supabaseClient
+                .from('profiles')
+                .select('username, site_role, avatar_url')
+                .eq('id', currentUser.id)
                 .single();
+            currentProfile = data;
+        }
 
-            if (error || !thread) {
-                container.innerHTML = '<div class="forum-empty">Тема не найдена или удалена</div>';
-                return;
+        await loadLikes();
+        await loadThread();
+    }
+
+    async function loadLikes() {
+        // Лайки темы
+        const { data: tLikes } = await supabaseClient
+            .from('forum_likes')
+            .select('user_id')
+            .eq('thread_id', threadId);
+
+        threadLikes = (tLikes || []).length;
+        threadLiked = currentUser ? (tLikes || []).some(l => l.user_id === currentUser.id) : false;
+
+        // Лайки постов
+        const { data: pLikes } = await supabaseClient
+            .from('forum_likes')
+            .select('post_id, user_id')
+            .not('post_id', 'is', null)
+            .in('post_id',
+                ((await supabaseClient.from('forum_posts').select('id').eq('thread_id', threadId)).data || [])
+                    .map(p => p.id)
+            );
+
+        postLikes = {};
+        myLikes = {};
+        (pLikes || []).forEach(l => {
+            postLikes[l.post_id] = (postLikes[l.post_id] || 0) + 1;
+            if (currentUser && l.user_id === currentUser.id) {
+                myLikes[l.post_id] = true;
             }
+        });
+    }
 
-            currentThread = thread;
+    async function loadThread() {
+        const container = document.getElementById('thread-content');
 
-            await supabaseClient
-                .from('forum_threads')
-                .update({ views: (thread.views || 0) + 1 })
-                .eq('id', threadId);
+        const { data: thread, error } = await supabaseClient
+            .from('forum_threads')
+            .select('*, forum_categories(slug, title, icon)')
+            .eq('id', threadId)
+            .single();
 
-            document.getElementById('breadcrumb-category').textContent = thread.forum_categories?.title || 'Категория';
+        if (error || !thread) {
+            container.innerHTML = '<div class="forum-empty">Тема не найдена или удалена</div>';
+            return;
+        }
 
-            const { data: posts } = await supabaseClient
-                .from('forum_posts')
-                .select('*')
-                .eq('thread_id', threadId)
-                .order('created_at');
+        currentThread = thread;
 
-            const canEditThread = canModify(thread.author_id);
-            const canDeleteThread = canModify(thread.author_id);
-            const canReply = currentUser && !thread.is_locked;
-            const canLockThread = canModify(thread.author_id) || isModerator();
-            const canPin = isModerator();
+        await supabaseClient
+            .from('forum_threads')
+            .update({ views: (thread.views || 0) + 1 })
+            .eq('id', threadId);
 
-            container.innerHTML = `
-                <div class="thread-header">
-                    <h1>
-                        ${thread.is_pinned ? '📌 ' : ''}
-                        ${thread.is_locked ? '🔒 ' : ''}
-                        ${escapeHtml(thread.title)}
-                    </h1>
-                    <div class="thread-header-info">
-                        <span>Автор: <strong>${escapeHtml(thread.author_username)}</strong></span>
-                        <span>${timeAgo(thread.created_at)}</span>
-                        <span>👁 ${(thread.views || 0) + 1}</span>
-                        <span>💬 ${posts?.length || 0}</span>
-                        ${thread.is_locked ? '<span style="color: #f87171;">🔒 Тема закрыта</span>' : ''}
+        document.getElementById('breadcrumb-category').textContent = thread.forum_categories?.title || 'Категория';
+
+        const { data: posts } = await supabaseClient
+            .from('forum_posts')
+            .select('*')
+            .eq('thread_id', threadId)
+            .order('created_at');
+
+        const canEditThread = canModify(thread.author_id);
+        const canDeleteThread = canModify(thread.author_id);
+        const canReply = currentUser && !thread.is_locked;
+        const canLockThread = canModify(thread.author_id) || isModerator();
+        const canPin = isModerator();
+
+        container.innerHTML = `
+            <div class="thread-header">
+                <h1>
+                    ${thread.is_pinned ? '📌 ' : ''}
+                    ${thread.is_locked ? '🔒 ' : ''}
+                    ${escapeHtml(thread.title)}
+                </h1>
+                <div class="thread-header-info">
+                    <span>Автор: <strong>${escapeHtml(thread.author_username)}</strong></span>
+                    <span>${timeAgo(thread.created_at)}</span>
+                    <span>👁 ${(thread.views || 0) + 1}</span>
+                    <span>💬 ${posts?.length || 0}</span>
+                    ${thread.is_locked ? '<span style="color: #f87171;">🔒 Тема закрыта</span>' : ''}
+                </div>
+
+                <div style="margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                    <button class="like-btn ${threadLiked ? 'liked' : ''}" onclick="toggleThreadLike()" id="thread-like-btn">
+                        👍 <span id="thread-like-count">${threadLikes}</span>
+                    </button>
+                    ${canEditThread ? `<button class="btn btn-secondary" onclick="openEditThread()" style="font-size: 12px; padding: 8px 16px;">✏️ Редактировать</button>` : ''}
+                    ${canLockThread ? `<button class="btn btn-secondary" onclick="toggleLock()" style="font-size: 12px; padding: 8px 16px;">${thread.is_locked ? '🔓 Открыть тему' : '🔒 Закрыть тему'}</button>` : ''}
+                    ${canPin ? `<button class="btn btn-secondary" onclick="togglePin()" style="font-size: 12px; padding: 8px 16px;">${thread.is_pinned ? '📍 Открепить' : '📌 Закрепить'}</button>` : ''}
+                    ${canDeleteThread ? `<button class="btn btn-secondary" onclick="openDeleteThreadModal()" style="font-size: 12px; padding: 8px 16px; color: #f87171;">🗑️ Удалить тему</button>` : ''}
+                </div>
+            </div>
+
+            <div class="thread-posts">
+                <div class="post">
+                    <div class="post-author">
+                        ${thread.author_avatar
+                            ? `<img src="${thread.author_avatar}" class="post-avatar" style="object-fit: cover;" alt="${escapeHtml(thread.author_username)}">`
+                            : `<div class="post-avatar">${getInitials(thread.author_username)}</div>`}
+                        <div class="post-author-info">
+                            <h4>${escapeHtml(thread.author_username)}</h4>
+                            <span>${timeAgo(thread.created_at)}</span>
+                        </div>
                     </div>
+                    <div class="post-content">${escapeHtml(thread.content)}</div>
+                </div>
+                ${(posts || []).map(p => renderPost(p)).join('')}
+            </div>
 
-                    ${(canEditThread || canDeleteThread || canLockThread || canPin) ? `
-                        <div style="margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap;">
-                            ${canEditThread ? `<button class="btn btn-secondary" onclick="openEditThread()" style="font-size: 12px; padding: 8px 16px;">✏️ Редактировать</button>` : ''}
-                            ${canLockThread ? `<button class="btn btn-secondary" onclick="toggleLock()" style="font-size: 12px; padding: 8px 16px;">${thread.is_locked ? '🔓 Открыть тему' : '🔒 Закрыть тему'}</button>` : ''}
-                            ${canPin ? `<button class="btn btn-secondary" onclick="togglePin()" style="font-size: 12px; padding: 8px 16px;">${thread.is_pinned ? '📍 Открепить' : '📌 Закрепить'}</button>` : ''}
-                            ${canDeleteThread ? `<button class="btn btn-secondary" onclick="openDeleteThreadModal()" style="font-size: 12px; padding: 8px 16px; color: #f87171;">🗑️ Удалить тему</button>` : ''}
+            ${thread.is_locked 
+                ? '<div class="forum-empty">🔒 Тема закрыта. Новые ответы недоступны.</div>' 
+                : (canReply ? `
+                    <div class="reply-form" id="reply-form">
+                        <h3 id="reply-form-title">Ответить</h3>
+                        <div id="reply-to-preview" style="display: none;"></div>
+                        <textarea id="reply-content" placeholder="Ваш ответ..." minlength="2"></textarea>
+                        <button class="btn btn-primary" onclick="submitReply()" id="reply-submit">Отправить ответ</button>
+                    </div>
+                ` : `
+                    <div class="forum-empty"><a href="login.html">Войдите</a>, чтобы оставить ответ</div>
+                `)
+            }
+        `;
+    }
+
+    function renderPost(post) {
+        const canEdit = canModify(post.author_id);
+        const canDelete = canModify(post.author_id);
+        const liked = myLikes[post.id] || false;
+        const likesCount = postLikes[post.id] || 0;
+
+        const avatarHtml = post.author_avatar
+            ? `<img src="${post.author_avatar}" class="post-avatar" style="object-fit: cover;" alt="${escapeHtml(post.author_username)}">`
+            : `<div class="post-avatar">${getInitials(post.author_username)}</div>`;
+
+        const replyPreview = post.reply_to_username ? `
+            <div class="reply-quote">
+                <div class="reply-quote-author">↩ ${escapeHtml(post.reply_to_username)}</div>
+                <div class="reply-quote-content">${escapeHtml((post.reply_to_content || '').substring(0, 200))}${(post.reply_to_content || '').length > 200 ? '...' : ''}</div>
+            </div>
+        ` : '';
+
+        return `
+            <div class="post" id="post-${post.id}">
+                <div class="post-author">
+                    ${avatarHtml}
+                    <div class="post-author-info">
+                        <h4>${escapeHtml(post.author_username)}</h4>
+                        <span>${timeAgo(post.created_at)}${post.updated_at !== post.created_at ? ' · изменено' : ''}</span>
+                    </div>
+                    ${(canEdit || canDelete) ? `
+                        <div class="post-author-actions">
+                            ${canEdit ? `<button class="admin-action-btn" onclick="openEditPost('${post.id}')" title="Редактировать">✏️</button>` : ''}
+                            ${canDelete ? `<button class="admin-action-btn btn-danger" onclick="openDeletePostModal('${post.id}')" title="Удалить">🗑️</button>` : ''}
                         </div>
                     ` : ''}
                 </div>
-
-                <div class="thread-posts">
-                    <div class="post">
-                        <div class="post-author">
-                            ${thread.author_avatar
-                                ? `<img src="${thread.author_avatar}" class="post-avatar" style="object-fit: cover;" alt="${escapeHtml(thread.author_username)}">`
-                                : `<div class="post-avatar">${getInitials(thread.author_username)}</div>`}
-                            <div class="post-author-info">
-                                <h4>${escapeHtml(thread.author_username)}</h4>
-                                <span>${timeAgo(thread.created_at)}</span>
-                            </div>
-                        </div>
-                        <div class="post-content">${escapeHtml(thread.content)}</div>
-                    </div>
-                    ${(posts || []).map(p => renderPost(p)).join('')}
+                ${replyPreview}
+                <div class="post-content">${escapeHtml(post.content)}</div>
+                <div class="post-actions">
+                    <button class="like-btn ${liked ? 'liked' : ''}" onclick="togglePostLike('${post.id}')" id="like-btn-${post.id}">
+                        👍 <span id="like-count-${post.id}">${likesCount}</span>
+                    </button>
+                    ${currentUser && !currentThread.is_locked ? `
+                        <button class="reply-btn" onclick="startReplyTo('${post.id}', '${escapeHtml(post.author_username).replace(/'/g, "\\'")}', ${JSON.stringify(post.content.substring(0, 100)).replace(/</g, '\\u003c')})">
+                            💬 Ответить
+                        </button>
+                    ` : ''}
                 </div>
+            </div>
+        `;
+    }
 
-                ${thread.is_locked 
-                    ? '<div class="forum-empty">🔒 Тема закрыта. Новые ответы недоступны.</div>' 
-                    : (canReply ? `
-                        <div class="reply-form">
-                            <h3>Ответить</h3>
-                            <textarea id="reply-content" placeholder="Ваш ответ..." minlength="2"></textarea>
-                            <button class="btn btn-primary" onclick="submitReply()" id="reply-submit">Отправить ответ</button>
-                        </div>
-                    ` : `
-                        <div class="forum-empty"><a href="login.html">Войдите</a>, чтобы оставить ответ</div>
-                    `)
-                }
-            `;
+    // === ЛАЙКИ ===
+    window.toggleThreadLike = async function () {
+        if (!currentUser) { alert('Войдите, чтобы ставить лайки'); return; }
+
+        const btn = document.getElementById('thread-like-btn');
+        const countEl = document.getElementById('thread-like-count');
+
+        if (threadLiked) {
+            const { error } = await supabaseClient
+                .from('forum_likes')
+                .delete()
+                .eq('thread_id', threadId)
+                .eq('user_id', currentUser.id);
+            if (error) { alert('Ошибка: ' + error.message); return; }
+            threadLiked = false;
+            threadLikes = Math.max(0, threadLikes - 1);
+        } else {
+            const { error } = await supabaseClient
+                .from('forum_likes')
+                .insert({ user_id: currentUser.id, thread_id: threadId });
+            if (error) { alert('Ошибка: ' + error.message); return; }
+            threadLiked = true;
+            threadLikes++;
         }
 
-        function renderPost(post) {
-            const canEdit = canModify(post.author_id);
-            const canDelete = canModify(post.author_id);
+        btn.classList.toggle('liked', threadLiked);
+        countEl.textContent = threadLikes;
+    };
 
-            const avatarHtml = post.author_avatar
-                ? `<img src="${post.author_avatar}" class="post-avatar" style="object-fit: cover;" alt="${escapeHtml(post.author_username)}">`
-                : `<div class="post-avatar">${getInitials(post.author_username)}</div>`;
+    window.togglePostLike = async function (postId) {
+        if (!currentUser) { alert('Войдите, чтобы ставить лайки'); return; }
 
-            return `
-                <div class="post">
-                    <div class="post-author">
-                        ${avatarHtml}
-                        <div class="post-author-info">
-                            <h4>${escapeHtml(post.author_username)}</h4>
-                            <span>${timeAgo(post.created_at)}${post.updated_at !== post.created_at ? ' · изменено' : ''}</span>
-                        </div>
-                        ${(canEdit || canDelete) ? `
-                            <div class="post-author-actions">
-                                ${canEdit ? `<button class="admin-action-btn" onclick="openEditPost('${post.id}')" title="Редактировать">✏️</button>` : ''}
-                                ${canDelete ? `<button class="admin-action-btn btn-danger" onclick="openDeletePostModal('${post.id}')" title="Удалить">🗑️</button>` : ''}
-                            </div>
-                        ` : ''}
-                    </div>
-                    <div class="post-content">${escapeHtml(post.content)}</div>
-                </div>
-            `;
+        const btn = document.getElementById('like-btn-' + postId);
+        const countEl = document.getElementById('like-count-' + postId);
+        const liked = myLikes[postId] || false;
+        let count = postLikes[postId] || 0;
+
+        if (liked) {
+            const { error } = await supabaseClient
+                .from('forum_likes')
+                .delete()
+                .eq('post_id', postId)
+                .eq('user_id', currentUser.id);
+            if (error) { alert('Ошибка: ' + error.message); return; }
+            myLikes[postId] = false;
+            count = Math.max(0, count - 1);
+        } else {
+            const { error } = await supabaseClient
+                .from('forum_likes')
+                .insert({ user_id: currentUser.id, post_id: postId });
+            if (error) { alert('Ошибка: ' + error.message); return; }
+            myLikes[postId] = true;
+            count++;
         }
 
-        // ============================================
-        // МОДАЛЬНЫЕ ОКНА
-        // ============================================
+        postLikes[postId] = count;
+        btn.classList.toggle('liked', myLikes[postId]);
+        countEl.textContent = count;
+    };
 
-        function createModal(id, content) {
-            // Удаляем старую, если есть
-            const old = document.getElementById(id);
-            if (old) old.remove();
+    // === ОТВЕТ НА КОНКРЕТНЫЙ ПОСТ ===
+    window.startReplyTo = function (postId, username, content) {
+        const form = document.getElementById('reply-form');
+        const titleEl = document.getElementById('reply-form-title');
+        const previewEl = document.getElementById('reply-to-preview');
+        const textarea = document.getElementById('reply-content');
 
-            const modal = document.createElement('div');
-            modal.id = id;
-            modal.className = 'modal-overlay';
-            modal.innerHTML = `<div class="modal-box">${content}</div>`;
-            document.body.appendChild(modal);
+        if (!form) return;
 
-            // Закрытие по клику вне
-            modal.addEventListener('click', (e) => {
-                if (e.target === modal) closeModal(id);
-            });
+        document.getElementById('reply-form').dataset.replyToId = postId;
 
-            // Закрытие по Escape
-            const escHandler = (e) => {
-                if (e.key === 'Escape') {
-                    closeModal(id);
-                    document.removeEventListener('keydown', escHandler);
-                }
-            };
-            document.addEventListener('keydown', escHandler);
+        titleEl.textContent = 'Ответ ' + username;
+        previewEl.style.display = 'block';
+        previewEl.innerHTML = `
+            <div class="reply-quote" style="margin-bottom: 15px;">
+                <div class="reply-quote-author">↩ ${escapeHtml(username)}</div>
+                <div class="reply-quote-content">${escapeHtml(content)}${content.length >= 100 ? '...' : ''}</div>
+                <button onclick="cancelReplyTo()" style="position: absolute; right: 10px; top: 8px; background: transparent; border: none; color: #f87171; cursor: pointer; font-size: 16px;">✕</button>
+            </div>
+        `;
 
-            // Анимация появления
-            requestAnimationFrame(() => modal.classList.add('active'));
+        form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setTimeout(() => textarea.focus(), 300);
+    };
 
-            return modal;
+    window.cancelReplyTo = function () {
+        const form = document.getElementById('reply-form');
+        const titleEl = document.getElementById('reply-form-title');
+        const previewEl = document.getElementById('reply-to-preview');
+
+        delete form.dataset.replyToId;
+        titleEl.textContent = 'Ответить';
+        previewEl.style.display = 'none';
+        previewEl.innerHTML = '';
+        document.getElementById('reply-content').value = '';
+    };
+
+    // === ОТВЕТ В ТЕМЕ ===
+    window.submitReply = async function () {
+        if (!currentUser) { alert('Нужно войти в аккаунт'); return; }
+        if (currentThread.is_locked) { alert('Тема закрыта'); return; }
+
+        const form = document.getElementById('reply-form');
+        const content = document.getElementById('reply-content').value.trim();
+        if (!content || content.length < 2) { alert('Введите текст ответа'); return; }
+
+        const replyToId = form.dataset.replyToId || null;
+        let replyToUsername = null;
+        let replyToContent = null;
+
+        if (replyToId) {
+            const postEl = document.getElementById('post-' + replyToId);
+            if (postEl) {
+                replyToUsername = postEl.querySelector('h4')?.textContent || null;
+                replyToContent = postEl.querySelector('.post-content')?.textContent || null;
+            }
         }
 
-        function closeModal(id) {
-            const modal = document.getElementById(id);
-            if (!modal) return;
-            modal.classList.remove('active');
-            setTimeout(() => modal.remove(), 250);
+        const submitBtn = document.getElementById('reply-submit');
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Отправка...';
+
+        const { error } = await supabaseClient
+            .from('forum_posts')
+            .insert({
+                thread_id: threadId,
+                author_id: currentUser.id,
+                author_username: currentProfile?.username || 'Аноним',
+                author_avatar: currentProfile?.avatar_url || null,
+                content: content,
+                reply_to_id: replyToId,
+                reply_to_username: replyToUsername,
+                reply_to_content: replyToContent
+            });
+
+        if (error) {
+            alert('Ошибка: ' + error.message);
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Отправить ответ';
+            return;
         }
 
-        // === РЕДАКТИРОВАНИЕ ТЕМЫ ===
-        window.openEditThread = function () {
-            const modal = createModal('edit-thread-modal', `
-                <h3>✏️ Редактировать тему</h3>
-                <label for="edit-thread-title">Заголовок</label>
-                <input type="text" id="edit-thread-title" value="${escapeHtml(currentThread.title)}" minlength="5" maxlength="200">
-                <label for="edit-thread-content">Текст</label>
-                <textarea id="edit-thread-content">${escapeHtml(currentThread.content)}</textarea>
-                <div class="modal-error" id="edit-thread-error"></div>
-                <div class="modal-actions">
-                    <button class="btn btn-secondary" onclick="closeModal('edit-thread-modal')">Отмена</button>
-                    <button class="btn btn-primary" id="edit-thread-save">Сохранить</button>
-                </div>
-            `);
+        await supabaseClient
+            .from('forum_threads')
+            .update({
+                replies_count: (currentThread.replies_count || 0) + 1,
+                last_reply_at: new Date().toISOString(),
+                last_reply_username: currentProfile?.username || 'Аноним'
+            })
+            .eq('id', threadId);
 
-            setTimeout(() => document.getElementById('edit-thread-title').focus(), 100);
+        window.location.reload();
+    };
 
-            document.getElementById('edit-thread-save').addEventListener('click', async () => {
-                const title = document.getElementById('edit-thread-title').value.trim();
-                const content = document.getElementById('edit-thread-content').value.trim();
-                const errorEl = document.getElementById('edit-thread-error');
+    // ============================================
+    // МОДАЛЬНЫЕ ОКНА (без изменений)
+    // ============================================
 
-                if (title.length < 5) { errorEl.textContent = 'Заголовок минимум 5 символов'; return; }
-                if (content.length < 10) { errorEl.textContent = 'Текст минимум 10 символов'; return; }
-
-                const btn = document.getElementById('edit-thread-save');
-                btn.disabled = true;
-                btn.textContent = 'Сохранение...';
-
-                const { error } = await supabaseClient
-                    .from('forum_threads')
-                    .update({ title, content, updated_at: new Date().toISOString() })
-                    .eq('id', threadId);
-
-                if (error) {
-                    errorEl.textContent = 'Ошибка: ' + error.message;
-                    btn.disabled = false;
-                    btn.textContent = 'Сохранить';
-                    return;
-                }
-
-                window.location.reload();
-            });
+    function createModal(id, content) {
+        const old = document.getElementById(id);
+        if (old) old.remove();
+        const modal = document.createElement('div');
+        modal.id = id;
+        modal.className = 'modal-overlay';
+        modal.innerHTML = `<div class="modal-box">${content}</div>`;
+        document.body.appendChild(modal);
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) closeModal(id);
+        });
+        const escHandler = (e) => {
+            if (e.key === 'Escape') {
+                closeModal(id);
+                document.removeEventListener('keydown', escHandler);
+            }
         };
+        document.addEventListener('keydown', escHandler);
+        requestAnimationFrame(() => modal.classList.add('active'));
+        return modal;
+    }
 
-        // === РЕДАКТИРОВАНИЕ ПОСТА ===
-        window.openEditPost = async function (postId) {
-            const contentEl = document.querySelector(`[onclick="openEditPost('${postId}')"]`)
-                ?.closest('.post')?.querySelector('.post-content');
+    function closeModal(id) {
+        const modal = document.getElementById(id);
+        if (!modal) return;
+        modal.classList.remove('active');
+        setTimeout(() => modal.remove(), 250);
+    }
 
-            const currentContent = contentEl?.textContent || '';
+    window.openEditThread = function () {
+        createModal('edit-thread-modal', `
+            <h3>✏️ Редактировать тему</h3>
+            <label for="edit-thread-title">Заголовок</label>
+            <input type="text" id="edit-thread-title" value="${escapeHtml(currentThread.title)}" minlength="5" maxlength="200">
+            <label for="edit-thread-content">Текст</label>
+            <textarea id="edit-thread-content">${escapeHtml(currentThread.content)}</textarea>
+            <div class="modal-error" id="edit-thread-error"></div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeModal('edit-thread-modal')">Отмена</button>
+                <button class="btn btn-primary" id="edit-thread-save">Сохранить</button>
+            </div>
+        `);
+        setTimeout(() => document.getElementById('edit-thread-title').focus(), 100);
+        document.getElementById('edit-thread-save').addEventListener('click', async () => {
+            const title = document.getElementById('edit-thread-title').value.trim();
+            const content = document.getElementById('edit-thread-content').value.trim();
+            const errorEl = document.getElementById('edit-thread-error');
+            if (title.length < 5) { errorEl.textContent = 'Заголовок минимум 5 символов'; return; }
+            if (content.length < 10) { errorEl.textContent = 'Текст минимум 10 символов'; return; }
+            const btn = document.getElementById('edit-thread-save');
+            btn.disabled = true;
+            btn.textContent = 'Сохранение...';
+            const { error } = await supabaseClient
+                .from('forum_threads')
+                .update({ title, content, updated_at: new Date().toISOString() })
+                .eq('id', threadId);
+            if (error) { errorEl.textContent = 'Ошибка: ' + error.message; btn.disabled = false; btn.textContent = 'Сохранить'; return; }
+            window.location.reload();
+        });
+    };
 
-            const modal = createModal('edit-post-modal', `
-                <h3>✏️ Редактировать ответ</h3>
-                <label for="edit-post-content">Текст</label>
-                <textarea id="edit-post-content">${escapeHtml(currentContent)}</textarea>
-                <div class="modal-error" id="edit-post-error"></div>
-                <div class="modal-actions">
-                    <button class="btn btn-secondary" onclick="closeModal('edit-post-modal')">Отмена</button>
-                    <button class="btn btn-primary" id="edit-post-save">Сохранить</button>
-                </div>
-            `);
+    window.openEditPost = async function (postId) {
+        const postEl = document.getElementById('post-' + postId);
+        const currentContent = postEl?.querySelector('.post-content')?.textContent || '';
 
-            setTimeout(() => document.getElementById('edit-post-content').focus(), 100);
-
-            document.getElementById('edit-post-save').addEventListener('click', async () => {
-                const content = document.getElementById('edit-post-content').value.trim();
-                const errorEl = document.getElementById('edit-post-error');
-
-                if (content.length < 2) { errorEl.textContent = 'Текст минимум 2 символа'; return; }
-
-                const btn = document.getElementById('edit-post-save');
-                btn.disabled = true;
-                btn.textContent = 'Сохранение...';
-
-                const { error } = await supabaseClient
-                    .from('forum_posts')
-                    .update({ content, updated_at: new Date().toISOString() })
-                    .eq('id', postId);
-
-                if (error) {
-                    errorEl.textContent = 'Ошибка: ' + error.message;
-                    btn.disabled = false;
-                    btn.textContent = 'Сохранить';
-                    return;
-                }
-
-                window.location.reload();
-            });
-        };
-
-        // === УДАЛЕНИЕ ТЕМЫ ===
-        window.openDeleteThreadModal = function () {
-            createModal('delete-thread-modal', `
-                <h3>🗑️ Удалить тему</h3>
-                <p style="color: #c5c6c7; font-size: 15px; margin-bottom: 20px; line-height: 1.6;">
-                    Вы уверены, что хотите удалить тему <strong style="color:#fff;">"${escapeHtml(currentThread.title)}"</strong>?<br>
-                    <span style="color: #f87171;">Это действие необратимо.</span>
-                </p>
-                <div class="modal-actions">
-                    <button class="btn btn-secondary" onclick="closeModal('delete-thread-modal')">Отмена</button>
-                    <button class="btn" style="background:#ef4444; color:#fff;" id="delete-thread-confirm">Удалить</button>
-                </div>
-            `);
-
-            document.getElementById('delete-thread-confirm').addEventListener('click', async () => {
-                const btn = document.getElementById('delete-thread-confirm');
-                btn.disabled = true;
-                btn.textContent = 'Удаление...';
-
-                const { error } = await supabaseClient
-                    .from('forum_threads')
-                    .delete()
-                    .eq('id', threadId);
-
-                if (error) {
-                    alert('Ошибка: ' + error.message);
-                    btn.disabled = false;
-                    btn.textContent = 'Удалить';
-                    return;
-                }
-                window.location.href = 'forum.html';
-            });
-        };
-
-        // === УДАЛЕНИЕ ПОСТА ===
-        window.openDeletePostModal = function (postId) {
-            createModal('delete-post-modal', `
-                <h3>🗑️ Удалить ответ</h3>
-                <p style="color: #c5c6c7; font-size: 15px; margin-bottom: 20px; line-height: 1.6;">
-                    Удалить этот ответ?<br>
-                    <span style="color: #f87171;">Это действие необратимо.</span>
-                </p>
-                <div class="modal-actions">
-                    <button class="btn btn-secondary" onclick="closeModal('delete-post-modal')">Отмена</button>
-                    <button class="btn" style="background:#ef4444; color:#fff;" id="delete-post-confirm">Удалить</button>
-                </div>
-            `);
-
-            document.getElementById('delete-post-confirm').addEventListener('click', async () => {
-                const btn = document.getElementById('delete-post-confirm');
-                btn.disabled = true;
-                btn.textContent = 'Удаление...';
-
-                const { error } = await supabaseClient
-                    .from('forum_posts')
-                    .delete()
-                    .eq('id', postId);
-
-                if (error) {
-                    alert('Ошибка: ' + error.message);
-                    btn.disabled = false;
-                    btn.textContent = 'Удалить';
-                    return;
-                }
-                window.location.reload();
-            });
-        };
-
-        // === ЗАКРЫТИЕ / ОТКРЫТИЕ ТЕМЫ ===
-        window.toggleLock = async function () {
-            const newLockState = !currentThread.is_locked;
-            const action = newLockState ? 'закрыть' : 'открыть';
-            const confirmText = newLockState 
-                ? 'Закрыть тему? Никто (включая вас) не сможет оставлять ответы.' 
-                : 'Открыть тему? Пользователи снова смогут отвечать.';
-
-            createModal('lock-modal', `
-                <h3>${newLockState ? '🔒 Закрыть тему' : '🔓 Открыть тему'}</h3>
-                <p style="color: #c5c6c7; font-size: 15px; margin-bottom: 20px; line-height: 1.6;">${confirmText}</p>
-                <div class="modal-actions">
-                    <button class="btn btn-secondary" onclick="closeModal('lock-modal')">Отмена</button>
-                    <button class="btn btn-primary" id="lock-confirm">${newLockState ? 'Закрыть' : 'Открыть'}</button>
-                </div>
-            `);
-
-            document.getElementById('lock-confirm').addEventListener('click', async () => {
-                const btn = document.getElementById('lock-confirm');
-                btn.disabled = true;
-                btn.textContent = '...';
-
-                const { error } = await supabaseClient
-                    .from('forum_threads')
-                    .update({ is_locked: newLockState, updated_at: new Date().toISOString() })
-                    .eq('id', threadId);
-
-                if (error) {
-                    alert('Ошибка: ' + error.message);
-                    btn.disabled = false;
-                    btn.textContent = newLockState ? 'Закрыть' : 'Открыть';
-                    return;
-                }
-                window.location.reload();
-            });
-        };
-
-        // === ОТВЕТ В ТЕМЕ ===
-        window.submitReply = async function () {
-            if (!currentUser) { alert('Нужно войти в аккаунт'); return; }
-            if (currentThread.is_locked) { alert('Тема закрыта, ответы недоступны'); return; }
-
-            const content = document.getElementById('reply-content').value.trim();
-            if (!content || content.length < 2) { alert('Введите текст ответа (минимум 2 символа)'); return; }
-
-            const submitBtn = document.getElementById('reply-submit');
-            submitBtn.disabled = true;
-            submitBtn.textContent = 'Отправка...';
-
+        createModal('edit-post-modal', `
+            <h3>✏️ Редактировать ответ</h3>
+            <label for="edit-post-content">Текст</label>
+            <textarea id="edit-post-content">${escapeHtml(currentContent)}</textarea>
+            <div class="modal-error" id="edit-post-error"></div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeModal('edit-post-modal')">Отмена</button>
+                <button class="btn btn-primary" id="edit-post-save">Сохранить</button>
+            </div>
+        `);
+        setTimeout(() => document.getElementById('edit-post-content').focus(), 100);
+        document.getElementById('edit-post-save').addEventListener('click', async () => {
+            const content = document.getElementById('edit-post-content').value.trim();
+            const errorEl = document.getElementById('edit-post-error');
+            if (content.length < 2) { errorEl.textContent = 'Текст минимум 2 символа'; return; }
+            const btn = document.getElementById('edit-post-save');
+            btn.disabled = true;
+            btn.textContent = 'Сохранение...';
             const { error } = await supabaseClient
                 .from('forum_posts')
-                .insert({
-                    thread_id: threadId,
-                    author_id: currentUser.id,
-                    author_username: currentProfile?.username || 'Аноним',
-                    author_avatar: currentProfile?.avatar_url || null,   // ← добавить
-                    content: content
-                });
-
-            if (error) {
-                alert('Ошибка: ' + error.message);
-                submitBtn.disabled = false;
-                submitBtn.textContent = 'Отправить ответ';
-                return;
-            }
-
-            await supabaseClient
-                .from('forum_threads')
-                .update({
-                    replies_count: (currentThread.replies_count || 0) + 1,
-                    last_reply_at: new Date().toISOString(),
-                    last_reply_username: currentProfile?.username || 'Аноним'
-                })
-                .eq('id', threadId);
-
+                .update({ content, updated_at: new Date().toISOString() })
+                .eq('id', postId);
+            if (error) { errorEl.textContent = 'Ошибка: ' + error.message; btn.disabled = false; btn.textContent = 'Сохранить'; return; }
             window.location.reload();
-        };
+        });
+    };
 
-        window.togglePin = async function () {
-            const newPinState = !currentThread.is_pinned;
-            const action = newPinState ? 'закрепить' : 'открепить';
+    window.openDeleteThreadModal = function () {
+        createModal('delete-thread-modal', `
+            <h3>🗑️ Удалить тему</h3>
+            <p style="color: #c5c6c7; font-size: 15px; margin-bottom: 20px; line-height: 1.6;">
+                Вы уверены, что хотите удалить тему <strong style="color:#fff;">"${escapeHtml(currentThread.title)}"</strong>?<br>
+                <span style="color: #f87171;">Это действие необратимо.</span>
+            </p>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeModal('delete-thread-modal')">Отмена</button>
+                <button class="btn" style="background:#ef4444; color:#fff;" id="delete-thread-confirm">Удалить</button>
+            </div>
+        `);
+        document.getElementById('delete-thread-confirm').addEventListener('click', async () => {
+            const btn = document.getElementById('delete-thread-confirm');
+            btn.disabled = true;
+            btn.textContent = 'Удаление...';
+            const { error } = await supabaseClient.from('forum_threads').delete().eq('id', threadId);
+            if (error) { alert('Ошибка: ' + error.message); btn.disabled = false; btn.textContent = 'Удалить'; return; }
+            window.location.href = 'forum.html';
+        });
+    };
 
-            if (!confirm(`Вы уверены, что хотите ${action} тему?`)) return;
+    window.openDeletePostModal = function (postId) {
+        createModal('delete-post-modal', `
+            <h3>🗑️ Удалить ответ</h3>
+            <p style="color: #c5c6c7; font-size: 15px; margin-bottom: 20px; line-height: 1.6;">
+                Удалить этот ответ?<br>
+                <span style="color: #f87171;">Это действие необратимо.</span>
+            </p>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeModal('delete-post-modal')">Отмена</button>
+                <button class="btn" style="background:#ef4444; color:#fff;" id="delete-post-confirm">Удалить</button>
+            </div>
+        `);
+        document.getElementById('delete-post-confirm').addEventListener('click', async () => {
+            const btn = document.getElementById('delete-post-confirm');
+            btn.disabled = true;
+            btn.textContent = 'Удаление...';
+            const { error } = await supabaseClient.from('forum_posts').delete().eq('id', postId);
+            if (error) { alert('Ошибка: ' + error.message); btn.disabled = false; btn.textContent = 'Удалить'; return; }
+            window.location.reload();
+        });
+    };
 
+    window.toggleLock = async function () {
+        const newLockState = !currentThread.is_locked;
+        const confirmText = newLockState 
+            ? 'Закрыть тему? Никто не сможет оставлять ответы.' 
+            : 'Открыть тему? Пользователи снова смогут отвечать.';
+        createModal('lock-modal', `
+            <h3>${newLockState ? '🔒 Закрыть тему' : '🔓 Открыть тему'}</h3>
+            <p style="color: #c5c6c7; font-size: 15px; margin-bottom: 20px; line-height: 1.6;">${confirmText}</p>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeModal('lock-modal')">Отмена</button>
+                <button class="btn btn-primary" id="lock-confirm">${newLockState ? 'Закрыть' : 'Открыть'}</button>
+            </div>
+        `);
+        document.getElementById('lock-confirm').addEventListener('click', async () => {
+            const btn = document.getElementById('lock-confirm');
+            btn.disabled = true;
+            btn.textContent = '...';
             const { error } = await supabaseClient
                 .from('forum_threads')
-                .update({ is_pinned: newPinState, updated_at: new Date().toISOString() })
+                .update({ is_locked: newLockState, updated_at: new Date().toISOString() })
                 .eq('id', threadId);
-
-            if (error) {
-                alert('Ошибка: ' + error.message);
-                return;
-            }
+            if (error) { alert('Ошибка: ' + error.message); btn.disabled = false; btn.textContent = newLockState ? 'Закрыть' : 'Открыть'; return; }
             window.location.reload();
-        };
+        });
+    };
 
-        window.addEventListener('DOMContentLoaded', init);
-    </script>
+    window.togglePin = async function () {
+        const newPinState = !currentThread.is_pinned;
+        const action = newPinState ? 'закрепить' : 'открепить';
+        if (!confirm(`Вы уверены, что хотите ${action} тему?`)) return;
+        const { error } = await supabaseClient
+            .from('forum_threads')
+            .update({ is_pinned: newPinState, updated_at: new Date().toISOString() })
+            .eq('id', threadId);
+        if (error) { alert('Ошибка: ' + error.message); return; }
+        window.location.reload();
+    };
+
+    window.addEventListener('DOMContentLoaded', init);
+</script>
 
 </body>
 </html>

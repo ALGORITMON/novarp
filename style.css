@@ -2521,3 +2521,92 @@ footer {
     margin-top: 10px;
     min-height: 18px;
 }
+
+
+
+/* Лайки */
+.like-btn {
+    background: rgba(19, 9, 36, 0.6);
+    border: 1px solid rgba(138, 92, 246, 0.25);
+    color: #94a3b8;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: 'Nunito', sans-serif;
+    transition: 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.like-btn:hover {
+    border-color: #a855f7;
+    color: #fff;
+    background: rgba(168, 85, 247, 0.1);
+}
+
+.like-btn.liked {
+    background: rgba(74, 222, 128, 0.15);
+    border-color: rgba(74, 222, 128, 0.4);
+    color: #4ade80;
+}
+
+.like-btn.liked:hover {
+    background: rgba(239, 68, 68, 0.15);
+    border-color: rgba(239, 68, 68, 0.4);
+    color: #f87171;
+}
+
+.post-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(138, 92, 246, 0.1);
+}
+
+.reply-btn {
+    background: transparent;
+    border: 1px solid rgba(138, 92, 246, 0.25);
+    color: #94a3b8;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: 'Nunito', sans-serif;
+    transition: 0.2s;
+}
+
+.reply-btn:hover {
+    border-color: #a855f7;
+    color: #fff;
+    background: rgba(168, 85, 247, 0.1);
+}
+
+/* Цитата (ответ на ответ) */
+.reply-quote {
+    position: relative;
+    background: rgba(138, 92, 246, 0.08);
+    border-left: 3px solid #a855f7;
+    padding: 10px 15px;
+    border-radius: 4px;
+    margin-bottom: 12px;
+    font-size: 13px;
+}
+
+.reply-quote-author {
+    color: #a855f7;
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+
+.reply-quote-content {
+    color: #94a3b8;
+    font-weight: 500;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
