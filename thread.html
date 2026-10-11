@@ -120,7 +120,7 @@
                 currentUser = session.user;
                 const { data } = await supabaseClient
                     .from('profiles')
-                    .select('username, site_role')
+                    .select('username, site_role, avatar_url')
                     .eq('id', currentUser.id)
                     .single();
                 currentProfile = data;
@@ -162,6 +162,7 @@
             const canDeleteThread = canModify(thread.author_id);
             const canReply = currentUser && !thread.is_locked;
             const canLockThread = canModify(thread.author_id) || isModerator();
+            const canPin = isModerator();
 
             container.innerHTML = `
                 <div class="thread-header">
@@ -177,10 +178,12 @@
                         <span>💬 ${posts?.length || 0}</span>
                         ${thread.is_locked ? '<span style="color: #f87171;">🔒 Тема закрыта</span>' : ''}
                     </div>
-                    ${(canEditThread || canDeleteThread || canLockThread) ? `
+
+                    ${(canEditThread || canDeleteThread || canLockThread || canPin) ? `
                         <div style="margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap;">
                             ${canEditThread ? `<button class="btn btn-secondary" onclick="openEditThread()" style="font-size: 12px; padding: 8px 16px;">✏️ Редактировать</button>` : ''}
                             ${canLockThread ? `<button class="btn btn-secondary" onclick="toggleLock()" style="font-size: 12px; padding: 8px 16px;">${thread.is_locked ? '🔓 Открыть тему' : '🔒 Закрыть тему'}</button>` : ''}
+                            ${canPin ? `<button class="btn btn-secondary" onclick="togglePin()" style="font-size: 12px; padding: 8px 16px;">${thread.is_pinned ? '📍 Открепить' : '📌 Закрепить'}</button>` : ''}
                             ${canDeleteThread ? `<button class="btn btn-secondary" onclick="openDeleteThreadModal()" style="font-size: 12px; padding: 8px 16px; color: #f87171;">🗑️ Удалить тему</button>` : ''}
                         </div>
                     ` : ''}
@@ -189,7 +192,9 @@
                 <div class="thread-posts">
                     <div class="post">
                         <div class="post-author">
-                            <div class="post-avatar">${getInitials(thread.author_username)}</div>
+                            ${thread.author_avatar
+                                ? `<img src="${thread.author_avatar}" class="post-avatar" style="object-fit: cover;" alt="${escapeHtml(thread.author_username)}">`
+                                : `<div class="post-avatar">${getInitials(thread.author_username)}</div>`}
                             <div class="post-author-info">
                                 <h4>${escapeHtml(thread.author_username)}</h4>
                                 <span>${timeAgo(thread.created_at)}</span>
@@ -219,10 +224,14 @@
             const canEdit = canModify(post.author_id);
             const canDelete = canModify(post.author_id);
 
+            const avatarHtml = post.author_avatar
+                ? `<img src="${post.author_avatar}" class="post-avatar" style="object-fit: cover;" alt="${escapeHtml(post.author_username)}">`
+                : `<div class="post-avatar">${getInitials(post.author_username)}</div>`;
+
             return `
                 <div class="post">
                     <div class="post-author">
-                        <div class="post-avatar">${getInitials(post.author_username)}</div>
+                        ${avatarHtml}
                         <div class="post-author-info">
                             <h4>${escapeHtml(post.author_username)}</h4>
                             <span>${timeAgo(post.created_at)}${post.updated_at !== post.created_at ? ' · изменено' : ''}</span>
@@ -495,6 +504,7 @@
                     thread_id: threadId,
                     author_id: currentUser.id,
                     author_username: currentProfile?.username || 'Аноним',
+                    author_avatar: currentProfile?.avatar_url || null,   // ← добавить
                     content: content
                 });
 
@@ -514,6 +524,24 @@
                 })
                 .eq('id', threadId);
 
+            window.location.reload();
+        };
+
+        window.togglePin = async function () {
+            const newPinState = !currentThread.is_pinned;
+            const action = newPinState ? 'закрепить' : 'открепить';
+
+            if (!confirm(`Вы уверены, что хотите ${action} тему?`)) return;
+
+            const { error } = await supabaseClient
+                .from('forum_threads')
+                .update({ is_pinned: newPinState, updated_at: new Date().toISOString() })
+                .eq('id', threadId);
+
+            if (error) {
+                alert('Ошибка: ' + error.message);
+                return;
+            }
             window.location.reload();
         };
 

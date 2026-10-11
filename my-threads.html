@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Мои темы — NOVA RP</title>
+
+    <link rel="preconnect" href="https://googleapis.com">
+    <link rel="preconnect" href="https://gstatic.com" crossorigin>
+    <link href="https://googleapis.com/css2?family=Nunito:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="space-veil">
+        <div class="nebula-cloud cloud-1"></div>
+        <div class="nebula-cloud cloud-2"></div>
+    </div>
+
+    <header>
+        <div class="logo"><a href="index.html">NOVA <span>RP</span></a></div>
+        <nav>
+            <a href="index.html">Главная</a>
+            <a href="rules.html">Правила</a>
+            <a href="jobs.html">Профессии</a>
+            <a href="donate.html">Донат</a>
+            <a href="team.html">Команда</a>
+            <a href="forum.html" class="active">Форум</a>
+            <a href="faq.html">FAQ</a>
+            <button class="btn-login" id="nav-login-btn">Вход</button>
+        </nav>
+    </header>
+
+    <main class="forum-container">
+        <div class="forum-breadcrumbs">
+            <a href="forum.html">Форум</a>
+            <span>›</span>
+            <span>Мои темы</span>
+        </div>
+
+        <div class="forum-header">
+            <div>
+                <h1>📝 Мои темы</h1>
+                <p>Все ваши темы на форуме</p>
+            </div>
+            <a href="new-thread.html" class="btn btn-primary">+ Создать тему</a>
+        </div>
+
+        <div class="forum-threads" id="threads-list">
+            <div class="forum-empty">Загрузка...</div>
+        </div>
+    </main>
+
+    <footer>
+        <div class="footer-grid">
+            <div class="footer-col">
+                <div class="footer-logo">NOVA <span>RP</span></div>
+                <p class="footer-desc">Игровой проект в Garry's Mod</p>
+            </div>
+            <div class="footer-col">
+                <h4>Документы</h4>
+                <a href="terms.pdf">Пользовательское соглашение</a>
+                <a href="privacy.pdf">Политика конфиденциальности</a>
+            </div>
+            <div class="footer-col">
+                <h4>Поддержка</h4>
+                <a href="mailto:novarpgmod.support@gmail.com">novarpgmod.support@gmail.com</a>
+                <a href="faq.html">FAQ</a>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            &copy; 2026 NOVA RP. Все права защищены.
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase.js"></script>
+    <script src="auth-check.js"></script>
+
+    <script>
+        function escapeHtml(str) {
+            return String(str || '').replace(/[&<>"']/g, m => (
+                { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]
+            ));
+        }
+
+        function timeAgo(dateStr) {
+            const date = new Date(dateStr);
+            const diff = Math.floor((Date.now() - date.getTime()) / 1000);
+            if (diff < 60) return 'только что';
+            if (diff < 3600) return Math.floor(diff / 60) + ' мин. назад';
+            if (diff < 86400) return Math.floor(diff / 3600) + ' ч. назад';
+            if (diff < 2592000) return Math.floor(diff / 86400) + ' дн. назад';
+            return date.toLocaleDateString('ru-RU');
+        }
+
+        function getInitials(nick) {
+            return (nick || '?').substring(0, 2).toUpperCase();
+        }
+
+        async function init() {
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (!session) {
+                alert('Войдите в аккаунт');
+                window.location.href = 'login.html';
+                return;
+            }
+
+            const container = document.getElementById('threads-list');
+
+            const { data: threads, error } = await supabaseClient
+                .from('forum_threads')
+                .select('*, forum_categories!inner(slug, title, icon)')
+                .eq('author_id', session.user.id)
+                .order('created_at', { ascending: false });
+
+            if (error) {
+                container.innerHTML = `<div class="forum-empty" style="color:#ef4444;">Ошибка: ${error.message}</div>`;
+                return;
+            }
+
+            if (!threads || threads.length === 0) {
+                container.innerHTML = `<div class="forum-empty">
+                    У вас пока нет тем. <br>
+                    <a href="new-thread.html">Создать первую тему</a>
+                </div>`;
+                return;
+            }
+
+            container.innerHTML = threads.map(t => `
+                <a href="thread.html?id=${t.id}" class="forum-thread">
+                    ${t.author_avatar
+    ? `<img src="${t.author_avatar}" class="forum-thread-avatar" style="object-fit: cover;" alt="${escapeHtml(t.author_username)}">`
+    : `<div class="forum-thread-avatar">${getInitials(t.author_username)}</div>`}
+                    <div class="forum-thread-main">
+                        <div class="forum-thread-title">
+                            ${t.is_pinned ? '<span class="pin-badge">📌 Закреплено</span>' : ''}
+                            ${t.is_locked ? '<span class="lock-badge">🔒 Закрыто</span>' : ''}
+                            ${escapeHtml(t.title)}
+                        </div>
+                        <div class="forum-thread-meta">
+                            ${t.forum_categories?.icon || '💬'} ${escapeHtml(t.forum_categories?.title || '')}
+                            • ${timeAgo(t.created_at)}
+                        </div>
+                    </div>
+                    <div class="forum-thread-stats">
+                        <div>
+                            <div class="stat-num">${t.replies_count || 0}</div>
+                            <div class="stat-label">Ответов</div>
+                        </div>
+                        <div>
+                            <div class="stat-num">${t.views || 0}</div>
+                            <div class="stat-label">Просм.</div>
+                        </div>
+                    </div>
+                </a>
+            `).join('');
+        }
+
+        window.addEventListener('DOMContentLoaded', init);
+    </script>
+
+</body>
+</html>

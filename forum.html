@@ -37,9 +37,14 @@
                 <h1>Форум <span class="accent-text">NOVA RP</span></h1>
                 <p>Общайтесь, задавайте вопросы, делитесь историями</p>
             </div>
-            <a href="new-thread.html" class="btn btn-primary" id="new-thread-btn" style="display: none;">
-                + Создать тему
-            </a>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <a href="my-threads.html" class="btn btn-secondary" id="my-threads-btn" style="display: none;">
+                    📝 Мои темы
+                </a>
+                <a href="new-thread.html" class="btn btn-primary" id="new-thread-btn" style="display: none;">
+                    + Создать тему
+                </a>
+            </div>
         </div>
 
         <!-- Категории -->
@@ -113,6 +118,7 @@
         const { data: { session } } = await supabaseClient.auth.getSession();
         if (session) {
             document.getElementById('new-thread-btn').style.display = 'inline-block';
+            document.getElementById('my-threads-btn').style.display = 'inline-block';
             // Если выбрана категория, добавим её в ссылку для new-thread
             if (categorySlug) {
                 document.getElementById('new-thread-btn').href = `new-thread.html?category=${categorySlug}`;
@@ -254,7 +260,9 @@
 
         return `
             <a href="thread.html?id=${t.id}" class="forum-thread">
-                <div class="forum-thread-avatar">${getInitials(t.author_username)}</div>
+                ${t.author_avatar
+    ? `<img src="${t.author_avatar}" class="forum-thread-avatar" style="object-fit: cover;" alt="${escapeHtml(t.author_username)}">`
+    : `<div class="forum-thread-avatar">${getInitials(t.author_username)}</div>`}
                 <div class="forum-thread-main">
                     <div class="forum-thread-title">
                         ${t.is_pinned ? '<span class="pin-badge">📌 Закреплено</span>' : ''}

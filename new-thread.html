@@ -107,7 +107,7 @@
             // Тянем профиль
             const { data } = await supabaseClient
                 .from('profiles')
-                .select('username')
+                .select('username, avatar_url')
                 .eq('id', currentUser.id)
                 .single();
 
@@ -172,6 +172,7 @@
                     category_id: categoryId,
                     author_id: currentUser.id,
                     author_username: currentProfile.username,
+                    author_avatar: currentProfile.avatar_url || null,   // ← добавить
                     title: title,
                     content: content
                 })
