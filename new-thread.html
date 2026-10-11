@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Новая тема — NOVA RP</title>
+
+    <link rel="preconnect" href="https://googleapis.com">
+    <link rel="preconnect" href="https://gstatic.com" crossorigin>
+    <link href="https://googleapis.com/css2?family=Nunito:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="space-veil">
+        <div class="nebula-cloud cloud-1"></div>
+        <div class="nebula-cloud cloud-2"></div>
+    </div>
+
+    <header>
+        <div class="logo"><a href="index.html">NOVA <span>RP</span></a></div>
+        <nav>
+            <a href="index.html">Главная</a>
+            <a href="rules.html">Правила</a>
+            <a href="jobs.html">Профессии</a>
+            <a href="donate.html">Донат</a>
+            <a href="team.html">Команда</a>
+            <a href="forum.html" class="active">Форум</a>
+            <a href="faq.html">FAQ</a>
+            <button class="btn-login" id="nav-login-btn">Вход</button>
+        </nav>
+    </header>
+
+    <main class="forum-container">
+        <div class="forum-breadcrumbs">
+            <a href="forum.html">Форум</a>
+            <span>›</span>
+            <span>Новая тема</span>
+        </div>
+
+        <div class="forum-header">
+            <div>
+                <h1>Создать тему</h1>
+                <p>Поделитесь мыслями, задайте вопрос или расскажите историю</p>
+            </div>
+        </div>
+
+        <form class="thread-form" id="thread-form">
+            <label for="thread-category">Категория</label>
+            <select id="thread-category" required>
+                <option value="">— Выберите категорию —</option>
+            </select>
+
+            <label for="thread-title">Заголовок темы</label>
+            <input type="text" id="thread-title" placeholder="Например: Ищу друзей для игры" required minlength="5" maxlength="200">
+
+            <label for="thread-content">Текст сообщения</label>
+            <textarea id="thread-content" placeholder="Расскажите подробнее..." required minlength="10" style="min-height: 200px;"></textarea>
+
+            <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 10px;">
+                Опубликовать тему
+            </button>
+        </form>
+    </main>
+
+    <footer>
+        <div class="footer-grid">
+            <div class="footer-col">
+                <div class="footer-logo">NOVA <span>RP</span></div>
+                <p class="footer-desc">Игровой проект в Garry's Mod</p>
+            </div>
+            <div class="footer-col">
+                <h4>Документы</h4>
+                <a href="terms.pdf">Пользовательское соглашение</a>
+                <a href="privacy.pdf">Политика конфиденциальности</a>
+            </div>
+            <div class="footer-col">
+                <h4>Поддержка</h4>
+                <a href="mailto:novarpgmod.support@gmail.com">novarpgmod.support@gmail.com</a>
+                <a href="faq.html">FAQ</a>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            &copy; 2026 NOVA RP. Все права защищены.
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase.js"></script>
+    <script src="auth-check.js"></script>
+
+    <script>
+        let currentUser = null;
+        let currentProfile = null;
+
+        async function init() {
+            // Проверяем сессию
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (!session) {
+                alert('Сначала войдите в аккаунт');
+                window.location.href = 'login.html';
+                return;
+            }
+
+            currentUser = session.user;
+
+            // Тянем профиль
+            const { data } = await supabaseClient
+                .from('profiles')
+                .select('username')
+                .eq('id', currentUser.id)
+                .single();
+
+            if (!data?.username) {
+                alert('Профиль не найден. Обратитесь к администрации.');
+                window.location.href = 'forum.html';
+                return;
+            }
+            currentProfile = data;
+
+            await loadCategories();
+        }
+
+        async function loadCategories() {
+            const select = document.getElementById('thread-category');
+            const { data, error } = await supabaseClient
+                .from('forum_categories')
+                .select('id, title, icon')
+                .order('sort_order');
+
+            if (error || !data) {
+                alert('Ошибка загрузки категорий: ' + (error?.message || 'нет данных'));
+                return;
+            }
+
+            select.innerHTML = '<option value="">— Выберите категорию —</option>' +
+                data.map(c => `<option value="${c.id}">${c.icon} ${c.title}</option>`).join('');
+        }
+
+        document.getElementById('thread-form').addEventListener('submit', async function (e) {
+            e.preventDefault();
+
+            const categoryId = parseInt(document.getElementById('thread-category').value);
+            const title = document.getElementById('thread-title').value.trim();
+            const content = document.getElementById('thread-content').value.trim();
+            const submitBtn = this.querySelector('button[type="submit"]');
+
+            if (!categoryId) {
+                alert('Выберите категорию');
+                return;
+            }
+            if (title.length < 5) {
+                alert('Заголовок минимум 5 символов');
+                return;
+            }
+            if (content.length < 10) {
+                alert('Текст минимум 10 символов');
+                return;
+            }
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Публикация...';
+
+            const { data, error } = await supabaseClient
+                .from('forum_threads')
+                .insert({
+                    category_id: categoryId,
+                    author_id: currentUser.id,
+                    author_username: currentProfile.username,
+                    title: title,
+                    content: content
+                })
+                .select()
+                .single();
+
+            if (error) {
+                alert('Ошибка: ' + error.message);
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Опубликовать тему';
+                return;
+            }
+
+            window.location.href = 'thread.html?id=' + data.id;
+        });
+
+        window.addEventListener('DOMContentLoaded', init);
+    </script>
+
+</body>
+</html>

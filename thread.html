@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тема — NOVA RP</title>
+
+    <link rel="preconnect" href="https://googleapis.com">
+    <link rel="preconnect" href="https://gstatic.com" crossorigin>
+    <link href="https://googleapis.com/css2?family=Nunito:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="space-veil">
+        <div class="nebula-cloud cloud-1"></div>
+        <div class="nebula-cloud cloud-2"></div>
+    </div>
+
+    <header>
+        <div class="logo"><a href="index.html">NOVA <span>RP</span></a></div>
+        <nav>
+            <a href="index.html">Главная</a>
+            <a href="rules.html">Правила</a>
+            <a href="jobs.html">Профессии</a>
+            <a href="donate.html">Донат</a>
+            <a href="team.html">Команда</a>
+            <a href="forum.html" class="active">Форум</a>
+            <a href="faq.html">FAQ</a>
+            <button class="btn-login" id="nav-login-btn">Вход</button>
+        </nav>
+    </header>
+
+    <main class="forum-container">
+        <div class="forum-breadcrumbs">
+            <a href="forum.html">Форум</a>
+            <span>›</span>
+            <span id="breadcrumb-category">...</span>
+        </div>
+
+        <div id="thread-content">
+            <div class="forum-empty">Загрузка...</div>
+        </div>
+    </main>
+
+    <footer>
+        <div class="footer-grid">
+            <div class="footer-col">
+                <div class="footer-logo">NOVA <span>RP</span></div>
+                <p class="footer-desc">Игровой проект в Garry's Mod</p>
+            </div>
+            <div class="footer-col">
+                <h4>Документы</h4>
+                <a href="terms.pdf">Пользовательское соглашение</a>
+                <a href="privacy.pdf">Политика конфиденциальности</a>
+            </div>
+            <div class="footer-col">
+                <h4>Поддержка</h4>
+                <a href="mailto:novarpgmod.support@gmail.com">novarpgmod.support@gmail.com</a>
+                <a href="faq.html">FAQ</a>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            &copy; 2026 NOVA RP. Все права защищены.
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase.js"></script>
+    <script src="auth-check.js"></script>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const threadId = urlParams.get('id');
+        let currentUser = null;
+        let currentProfile = null;
+        let currentThread = null;
+
+        function escapeHtml(str) {
+            return String(str || '').replace(/[&<>"']/g, m => (
+                { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]
+            ));
+        }
+
+        function timeAgo(dateStr) {
+            const date = new Date(dateStr);
+            const diff = Math.floor((Date.now() - date.getTime()) / 1000);
+            if (diff < 60) return 'только что';
+            if (diff < 3600) return Math.floor(diff / 60) + ' мин. назад';
+            if (diff < 86400) return Math.floor(diff / 3600) + ' ч. назад';
+            if (diff < 2592000) return Math.floor(diff / 86400) + ' дн. назад';
+            return date.toLocaleDateString('ru-RU');
+        }
+
+        function getInitials(nick) {
+            return (nick || '?').substring(0, 2).toUpperCase();
+        }
+
+        async function init() {
+            if (!threadId) {
+                document.getElementById('thread-content').innerHTML = '<div class="forum-empty">Тема не найдена</div>';
+                return;
+            }
+
+            // Сессия
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (session) {
+                currentUser = session.user;
+                const { data } = await supabaseClient
+                    .from('profiles')
+                    .select('username, site_role')
+                    .eq('id', currentUser.id)
+                    .single();
+                currentProfile = data;
+            }
+
+            await loadThread();
+        }
+
+        async function loadThread() {
+            const container = document.getElementById('thread-content');
+
+            // Тред + категория
+            const { data: thread, error } = await supabaseClient
+                .from('forum_threads')
+                .select('*, forum_categories(slug, title, icon)')
+                .eq('id', threadId)
+                .single();
+
+            if (error || !thread) {
+                container.innerHTML = '<div class="forum-empty">Тема не найдена или удалена</div>';
+                return;
+            }
+
+            currentThread = thread;
+
+            // Увеличиваем просмотры
+            await supabaseClient
+                .from('forum_threads')
+                .update({ views: (thread.views || 0) + 1 })
+                .eq('id', threadId);
+
+            document.getElementById('breadcrumb-category').textContent = thread.forum_categories?.title || 'Категория';
+
+            // Посты
+            const { data: posts } = await supabaseClient
+                .from('forum_posts')
+                .select('*')
+                .eq('thread_id', threadId)
+                .order('created_at');
+
+            const postsHtml = (posts || []).map(p => renderPost(p)).join('');
+
+            const canReply = currentUser && !thread.is_locked;
+            const isAdmin = currentProfile?.site_role === 'admin';
+            const isAuthor = currentUser && currentUser.id === thread.author_id;
+
+            container.innerHTML = `
+                <div class="thread-header">
+                    <h1>
+                        ${thread.is_pinned ? '📌 ' : ''}
+                        ${thread.is_locked ? '🔒 ' : ''}
+                        ${escapeHtml(thread.title)}
+                    </h1>
+                    <div class="thread-header-info">
+                        <span>Автор: <strong>${escapeHtml(thread.author_username)}</strong></span>
+                        <span>${timeAgo(thread.created_at)}</span>
+                        <span>👁 ${(thread.views || 0) + 1}</span>
+                        <span>💬 ${posts?.length || 0}</span>
+                    </div>
+                    ${(isAuthor || isAdmin) ? `
+                        <div style="margin-top: 15px; display: flex; gap: 10px;">
+                            <button class="btn btn-secondary" onclick="deleteThread()" style="font-size: 12px; padding: 8px 16px;">
+                                🗑️ Удалить тему
+                            </button>
+                        </div>
+                    ` : ''}
+                </div>
+
+                <!-- Первый пост (сам тред) -->
+                <div class="thread-posts">
+                    <div class="post">
+                        <div class="post-author">
+                            <div class="post-avatar">${getInitials(thread.author_username)}</div>
+                            <div class="post-author-info">
+                                <h4>${escapeHtml(thread.author_username)}</h4>
+                                <span>${timeAgo(thread.created_at)}</span>
+                            </div>
+                        </div>
+                        <div class="post-content">${escapeHtml(thread.content)}</div>
+                    </div>
+                    ${postsHtml}
+                </div>
+
+                ${thread.is_locked 
+                    ? '<div class="forum-empty">🔒 Тема закрыта. Новые ответы недоступны.</div>' 
+                    : (canReply ? `
+                        <div class="reply-form">
+                            <h3>Ответить</h3>
+                            <textarea id="reply-content" placeholder="Ваш ответ..." minlength="2"></textarea>
+                            <button class="btn btn-primary" onclick="submitReply()" id="reply-submit">
+                                Отправить ответ
+                            </button>
+                        </div>
+                    ` : `
+                        <div class="forum-empty">
+                            <a href="login.html">Войдите</a>, чтобы оставить ответ
+                        </div>
+                    `)
+                }
+            `;
+        }
+
+        function renderPost(post) {
+            const isAdmin = currentProfile?.site_role === 'admin';
+            const isAuthor = currentUser && currentUser.id === post.author_id;
+
+            return `
+                <div class="post">
+                    <div class="post-author">
+                        <div class="post-avatar">${getInitials(post.author_username)}</div>
+                        <div class="post-author-info">
+                            <h4>${escapeHtml(post.author_username)}</h4>
+                            <span>${timeAgo(post.created_at)}</span>
+                        </div>
+                        ${(isAuthor || isAdmin) ? `
+                            <div class="post-author-actions">
+                                <button class="admin-action-btn btn-danger" onclick="deletePost('${post.id}')" title="Удалить">🗑️</button>
+                            </div>
+                        ` : ''}
+                    </div>
+                    <div class="post-content">${escapeHtml(post.content)}</div>
+                </div>
+            `;
+        }
+
+        window.submitReply = async function () {
+            if (!currentUser) {
+                alert('Нужно войти в аккаунт');
+                return;
+            }
+
+            const content = document.getElementById('reply-content').value.trim();
+            if (!content || content.length < 2) {
+                alert('Введите текст ответа (минимум 2 символа)');
+                return;
+            }
+
+            const submitBtn = document.getElementById('reply-submit');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Отправка...';
+
+            const { error } = await supabaseClient
+                .from('forum_posts')
+                .insert({
+                    thread_id: threadId,
+                    author_id: currentUser.id,
+                    author_username: currentProfile?.username || 'Аноним',
+                    content: content
+                });
+
+            if (error) {
+                alert('Ошибка: ' + error.message);
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Отправить ответ';
+                return;
+            }
+
+            // Обновить счётчики треда
+            await supabaseClient
+                .from('forum_threads')
+                .update({
+                    replies_count: (currentThread.replies_count || 0) + 1,
+                    last_reply_at: new Date().toISOString(),
+                    last_reply_username: currentProfile?.username || 'Аноним'
+                })
+                .eq('id', threadId);
+
+            window.location.reload();
+        };
+
+        window.deletePost = async function (postId) {
+            if (!confirm('Удалить этот ответ?')) return;
+
+            const { error } = await supabaseClient
+                .from('forum_posts')
+                .delete()
+                .eq('id', postId);
+
+            if (error) {
+                alert('Ошибка: ' + error.message);
+                return;
+            }
+            window.location.reload();
+        };
+
+        window.deleteThread = async function () {
+            if (!confirm('Удалить всю тему? Это действие необратимо.')) return;
+
+            const { error } = await supabaseClient
+                .from('forum_threads')
+                .delete()
+                .eq('id', threadId);
+
+            if (error) {
+                alert('Ошибка: ' + error.message);
+                return;
+            }
+            window.location.href = 'forum.html';
+        };
+
+        window.addEventListener('DOMContentLoaded', init);
+    </script>
+
+</body>
+</html>
