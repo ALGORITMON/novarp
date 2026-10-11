@@ -119,7 +119,22 @@
         if (session) {
             document.getElementById('new-thread-btn').style.display = 'inline-block';
             document.getElementById('my-threads-btn').style.display = 'inline-block';
-            // Если выбрана категория, добавим её в ссылку для new-thread
+            
+            // Проверяем — если мы в "Объявления", и мы не админ/модер
+            if (categorySlug === 'announcements') {
+                const { data: profile } = await supabaseClient
+                    .from('profiles')
+                    .select('site_role')
+                    .eq('id', session.user.id)
+                    .single();
+                
+                const isMod = profile?.site_role === 'admin' || profile?.site_role === 'mod';
+                if (!isMod) {
+                    // Скрываем кнопку "Создать тему"
+                    document.getElementById('new-thread-btn').style.display = 'none';
+                }
+            }
+            
             if (categorySlug) {
                 document.getElementById('new-thread-btn').href = `new-thread.html?category=${categorySlug}`;
             }

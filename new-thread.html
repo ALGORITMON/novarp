@@ -107,7 +107,7 @@
             // Тянем профиль
             const { data } = await supabaseClient
                 .from('profiles')
-                .select('username, avatar_url')
+                .select('username, avatar_url, site_role')
                 .eq('id', currentUser.id)
                 .single();
 
@@ -123,11 +123,12 @@
 
         async function loadCategories() {
             const select = document.getElementById('thread-category');
-            
-            // Проверяем URL на предвыбранную категорию
             const urlParams = new URLSearchParams(window.location.search);
             const preselectedSlug = urlParams.get('category');
-            
+
+            // Проверяем, кто мы
+            const isMod = currentProfile?.site_role === 'admin' || currentProfile?.site_role === 'mod';
+
             const { data, error } = await supabaseClient
                 .from('forum_categories')
                 .select('id, slug, title, icon')
@@ -138,10 +139,18 @@
                 return;
             }
 
-            select.innerHTML = '<option value="">— Выберите категорию —</option>' +
-                data.map(c => `<option value="${c.id}" ${c.slug === preselectedSlug ? 'selected' : ''}>${c.icon} ${c.title}</option>`).join('');
-        }
+            // Фильтруем: обычные юзеры не видят "Объявления"
+            const available = data.filter(c => {
+                if (c.slug === 'announcements' && !isMod) return false;
+                return true;
+            });
 
+            select.innerHTML = '<option value="">— Выберите категорию —</option>' +
+                available.map(c => 
+                    `<option value="${c.id}" ${c.slug === preselectedSlug ? 'selected' : ''}>${c.icon} ${c.title}</option>`
+                ).join('');
+        }
+        
         document.getElementById('thread-form').addEventListener('submit', async function (e) {
             e.preventDefault();
 
