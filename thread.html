@@ -134,31 +134,31 @@
     }
 
     async function loadLikes() {
-        // Лайки темы
-        const { data: tLikes } = await supabaseClient
+        // Один запрос вместо двух вложенных
+        const { data: allLikes, error } = await supabaseClient
             .from('forum_likes')
-            .select('user_id')
-            .eq('thread_id', threadId);
+            .select('user_id, thread_id, post_id')
+            .or(`thread_id.eq.${threadId},post_id.not.is.null`);
 
-        threadLikes = (tLikes || []).length;
-        threadLiked = currentUser ? (tLikes || []).some(l => l.user_id === currentUser.id) : false;
-
-        // Лайки постов
-        const { data: pLikes } = await supabaseClient
-            .from('forum_likes')
-            .select('post_id, user_id')
-            .not('post_id', 'is', null)
-            .in('post_id',
-                ((await supabaseClient.from('forum_posts').select('id').eq('thread_id', threadId)).data || [])
-                    .map(p => p.id)
-            );
-
+        threadLikes = 0;
+        threadLiked = false;
         postLikes = {};
         myLikes = {};
-        (pLikes || []).forEach(l => {
-            postLikes[l.post_id] = (postLikes[l.post_id] || 0) + 1;
-            if (currentUser && l.user_id === currentUser.id) {
-                myLikes[l.post_id] = true;
+
+        (allLikes || []).forEach(l => {
+            // Лайки темы
+            if (l.thread_id === threadId) {
+                threadLikes++;
+                if (currentUser && l.user_id === currentUser.id) {
+                    threadLiked = true;
+                }
+            }
+            // Лайки постов
+            if (l.post_id) {
+                postLikes[l.post_id] = (postLikes[l.post_id] || 0) + 1;
+                if (currentUser && l.user_id === currentUser.id) {
+                    myLikes[l.post_id] = true;
+                }
             }
         });
     }
