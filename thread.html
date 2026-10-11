@@ -69,248 +69,337 @@
     <script src="supabase.js"></script>
     <script src="auth-check.js"></script>
 
-    <script>
-        const urlParams = new URLSearchParams(window.location.search);
-        const threadId = urlParams.get('id');
-        let currentUser = null;
-        let currentProfile = null;
-        let currentThread = null;
+<script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const threadId = urlParams.get('id');
+    let currentUser = null;
+    let currentProfile = null;
+    let currentThread = null;
 
-        function escapeHtml(str) {
-            return String(str || '').replace(/[&<>"']/g, m => (
-                { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]
-            ));
+    function escapeHtml(str) {
+        return String(str || '').replace(/[&<>"']/g, m => (
+            { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]
+        ));
+    }
+
+    function timeAgo(dateStr) {
+        const date = new Date(dateStr);
+        const diff = Math.floor((Date.now() - date.getTime()) / 1000);
+        if (diff < 60) return 'только что';
+        if (diff < 3600) return Math.floor(diff / 60) + ' мин. назад';
+        if (diff < 86400) return Math.floor(diff / 3600) + ' ч. назад';
+        if (diff < 2592000) return Math.floor(diff / 86400) + ' дн. назад';
+        return date.toLocaleDateString('ru-RU');
+    }
+
+    function getInitials(nick) {
+        return (nick || '?').substring(0, 2).toUpperCase();
+    }
+
+    function canModify(authorId) {
+        if (!currentUser) return false;
+        if (currentUser.id === authorId) return true;
+        if (currentProfile?.site_role === 'admin') return true;
+        if (currentProfile?.site_role === 'mod') return true;
+        return false;
+    }
+
+    function isModerator() {
+        return currentProfile?.site_role === 'admin' || currentProfile?.site_role === 'mod';
+    }
+
+    async function init() {
+        if (!threadId) {
+            document.getElementById('thread-content').innerHTML = '<div class="forum-empty">Тема не найдена</div>';
+            return;
         }
 
-        function timeAgo(dateStr) {
-            const date = new Date(dateStr);
-            const diff = Math.floor((Date.now() - date.getTime()) / 1000);
-            if (diff < 60) return 'только что';
-            if (diff < 3600) return Math.floor(diff / 60) + ' мин. назад';
-            if (diff < 86400) return Math.floor(diff / 3600) + ' ч. назад';
-            if (diff < 2592000) return Math.floor(diff / 86400) + ' дн. назад';
-            return date.toLocaleDateString('ru-RU');
-        }
-
-        function getInitials(nick) {
-            return (nick || '?').substring(0, 2).toUpperCase();
-        }
-
-        async function init() {
-            if (!threadId) {
-                document.getElementById('thread-content').innerHTML = '<div class="forum-empty">Тема не найдена</div>';
-                return;
-            }
-
-            // Сессия
-            const { data: { session } } = await supabaseClient.auth.getSession();
-            if (session) {
-                currentUser = session.user;
-                const { data } = await supabaseClient
-                    .from('profiles')
-                    .select('username, site_role')
-                    .eq('id', currentUser.id)
-                    .single();
-                currentProfile = data;
-            }
-
-            await loadThread();
-        }
-
-        async function loadThread() {
-            const container = document.getElementById('thread-content');
-
-            // Тред + категория
-            const { data: thread, error } = await supabaseClient
-                .from('forum_threads')
-                .select('*, forum_categories(slug, title, icon)')
-                .eq('id', threadId)
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (session) {
+            currentUser = session.user;
+            const { data } = await supabaseClient
+                .from('profiles')
+                .select('username, site_role')
+                .eq('id', currentUser.id)
                 .single();
+            currentProfile = data;
+        }
 
-            if (error || !thread) {
-                container.innerHTML = '<div class="forum-empty">Тема не найдена или удалена</div>';
-                return;
-            }
+        await loadThread();
+    }
 
-            currentThread = thread;
+    async function loadThread() {
+        const container = document.getElementById('thread-content');
 
-            // Увеличиваем просмотры
-            await supabaseClient
-                .from('forum_threads')
-                .update({ views: (thread.views || 0) + 1 })
-                .eq('id', threadId);
+        const { data: thread, error } = await supabaseClient
+            .from('forum_threads')
+            .select('*, forum_categories(slug, title, icon)')
+            .eq('id', threadId)
+            .single();
 
-            document.getElementById('breadcrumb-category').textContent = thread.forum_categories?.title || 'Категория';
+        if (error || !thread) {
+            container.innerHTML = '<div class="forum-empty">Тема не найдена или удалена</div>';
+            return;
+        }
 
-            // Посты
-            const { data: posts } = await supabaseClient
-                .from('forum_posts')
-                .select('*')
-                .eq('thread_id', threadId)
-                .order('created_at');
+        currentThread = thread;
 
-            const postsHtml = (posts || []).map(p => renderPost(p)).join('');
+        // Увеличиваем просмотры
+        await supabaseClient
+            .from('forum_threads')
+            .update({ views: (thread.views || 0) + 1 })
+            .eq('id', threadId);
 
-            const canReply = currentUser && !thread.is_locked;
-            const isAdmin = currentProfile?.site_role === 'admin';
-            const isAuthor = currentUser && currentUser.id === thread.author_id;
+        document.getElementById('breadcrumb-category').textContent = thread.forum_categories?.title || 'Категория';
 
-            container.innerHTML = `
-                <div class="thread-header">
-                    <h1>
-                        ${thread.is_pinned ? '📌 ' : ''}
-                        ${thread.is_locked ? '🔒 ' : ''}
-                        ${escapeHtml(thread.title)}
-                    </h1>
-                    <div class="thread-header-info">
-                        <span>Автор: <strong>${escapeHtml(thread.author_username)}</strong></span>
-                        <span>${timeAgo(thread.created_at)}</span>
-                        <span>👁 ${(thread.views || 0) + 1}</span>
-                        <span>💬 ${posts?.length || 0}</span>
-                    </div>
-                    ${(isAuthor || isAdmin) ? `
-                        <div style="margin-top: 15px; display: flex; gap: 10px;">
-                            <button class="btn btn-secondary" onclick="deleteThread()" style="font-size: 12px; padding: 8px 16px;">
+        const { data: posts } = await supabaseClient
+            .from('forum_posts')
+            .select('*')
+            .eq('thread_id', threadId)
+            .order('created_at');
+
+        const canEditThread = canModify(thread.author_id);
+        const canDeleteThread = canModify(thread.author_id);
+        const canReply = currentUser && !thread.is_locked;
+        const canLockThread = canModify(thread.author_id) || isModerator();
+
+        container.innerHTML = `
+            <div class="thread-header">
+                <h1>
+                    ${thread.is_pinned ? '📌 ' : ''}
+                    ${thread.is_locked ? '🔒 ' : ''}
+                    ${escapeHtml(thread.title)}
+                </h1>
+                <div class="thread-header-info">
+                    <span>Автор: <strong>${escapeHtml(thread.author_username)}</strong></span>
+                    <span>${timeAgo(thread.created_at)}</span>
+                    <span>👁 ${(thread.views || 0) + 1}</span>
+                    <span>💬 ${posts?.length || 0}</span>
+                    ${thread.is_locked ? '<span style="color: #f87171;">🔒 Тема закрыта</span>' : ''}
+                </div>
+                ${(canEditThread || canDeleteThread || canLockThread) ? `
+                    <div style="margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap;">
+                        ${canEditThread ? `
+                            <button class="btn btn-secondary" onclick="openEditThread()" style="font-size: 12px; padding: 8px 16px;">
+                                ✏️ Редактировать
+                            </button>
+                        ` : ''}
+                        ${canLockThread ? `
+                            <button class="btn btn-secondary" onclick="toggleLock()" style="font-size: 12px; padding: 8px 16px;">
+                                ${thread.is_locked ? '🔓 Открыть тему' : '🔒 Закрыть тему'}
+                            </button>
+                        ` : ''}
+                        ${canDeleteThread ? `
+                            <button class="btn btn-secondary" onclick="deleteThread()" style="font-size: 12px; padding: 8px 16px; color: #f87171;">
                                 🗑️ Удалить тему
                             </button>
+                        ` : ''}
+                    </div>
+                ` : ''}
+            </div>
+
+            <div class="thread-posts">
+                <div class="post" id="thread-first-post">
+                    <div class="post-author">
+                        <div class="post-avatar">${getInitials(thread.author_username)}</div>
+                        <div class="post-author-info">
+                            <h4>${escapeHtml(thread.author_username)}</h4>
+                            <span>${timeAgo(thread.created_at)}</span>
+                        </div>
+                    </div>
+                    <div class="post-content" id="thread-first-content">${escapeHtml(thread.content)}</div>
+                </div>
+                ${(posts || []).map(p => renderPost(p)).join('')}
+            </div>
+
+            ${thread.is_locked 
+                ? '<div class="forum-empty">🔒 Тема закрыта. Новые ответы недоступны.</div>' 
+                : (canReply ? `
+                    <div class="reply-form">
+                        <h3>Ответить</h3>
+                        <textarea id="reply-content" placeholder="Ваш ответ..." minlength="2"></textarea>
+                        <button class="btn btn-primary" onclick="submitReply()" id="reply-submit">
+                            Отправить ответ
+                        </button>
+                    </div>
+                ` : `
+                    <div class="forum-empty">
+                        <a href="login.html">Войдите</a>, чтобы оставить ответ
+                    </div>
+                `)
+            }
+        `;
+    }
+
+    function renderPost(post) {
+        const canEdit = canModify(post.author_id);
+        const canDelete = canModify(post.author_id);
+
+        return `
+            <div class="post" id="post-${post.id}">
+                <div class="post-author">
+                    <div class="post-avatar">${getInitials(post.author_username)}</div>
+                    <div class="post-author-info">
+                        <h4>${escapeHtml(post.author_username)}</h4>
+                        <span>${timeAgo(post.created_at)}</span>
+                    </div>
+                    ${(canEdit || canDelete) ? `
+                        <div class="post-author-actions">
+                            ${canEdit ? `<button class="admin-action-btn" onclick="editPost('${post.id}')" title="Редактировать">✏️</button>` : ''}
+                            ${canDelete ? `<button class="admin-action-btn btn-danger" onclick="deletePost('${post.id}')" title="Удалить">🗑️</button>` : ''}
                         </div>
                     ` : ''}
                 </div>
+                <div class="post-content" id="content-${post.id}">${escapeHtml(post.content)}</div>
+            </div>
+        `;
+    }
 
-                <!-- Первый пост (сам тред) -->
-                <div class="thread-posts">
-                    <div class="post">
-                        <div class="post-author">
-                            <div class="post-avatar">${getInitials(thread.author_username)}</div>
-                            <div class="post-author-info">
-                                <h4>${escapeHtml(thread.author_username)}</h4>
-                                <span>${timeAgo(thread.created_at)}</span>
-                            </div>
-                        </div>
-                        <div class="post-content">${escapeHtml(thread.content)}</div>
-                    </div>
-                    ${postsHtml}
-                </div>
-
-                ${thread.is_locked 
-                    ? '<div class="forum-empty">🔒 Тема закрыта. Новые ответы недоступны.</div>' 
-                    : (canReply ? `
-                        <div class="reply-form">
-                            <h3>Ответить</h3>
-                            <textarea id="reply-content" placeholder="Ваш ответ..." minlength="2"></textarea>
-                            <button class="btn btn-primary" onclick="submitReply()" id="reply-submit">
-                                Отправить ответ
-                            </button>
-                        </div>
-                    ` : `
-                        <div class="forum-empty">
-                            <a href="login.html">Войдите</a>, чтобы оставить ответ
-                        </div>
-                    `)
-                }
-            `;
+    // === РЕДАКТИРОВАНИЕ ТЕМЫ ===
+    window.openEditThread = function () {
+        const newTitle = prompt('Новый заголовок:', currentThread.title);
+        if (newTitle === null) return;
+        if (!newTitle.trim() || newTitle.length < 5) {
+            alert('Заголовок минимум 5 символов');
+            return;
         }
 
-        function renderPost(post) {
-            const isAdmin = currentProfile?.site_role === 'admin';
-            const isAuthor = currentUser && currentUser.id === post.author_id;
-
-            return `
-                <div class="post">
-                    <div class="post-author">
-                        <div class="post-avatar">${getInitials(post.author_username)}</div>
-                        <div class="post-author-info">
-                            <h4>${escapeHtml(post.author_username)}</h4>
-                            <span>${timeAgo(post.created_at)}</span>
-                        </div>
-                        ${(isAuthor || isAdmin) ? `
-                            <div class="post-author-actions">
-                                <button class="admin-action-btn btn-danger" onclick="deletePost('${post.id}')" title="Удалить">🗑️</button>
-                            </div>
-                        ` : ''}
-                    </div>
-                    <div class="post-content">${escapeHtml(post.content)}</div>
-                </div>
-            `;
+        const newContent = prompt('Новый текст темы:', currentThread.content);
+        if (newContent === null) return;
+        if (!newContent.trim() || newContent.length < 10) {
+            alert('Текст минимум 10 символов');
+            return;
         }
 
-        window.submitReply = async function () {
-            if (!currentUser) {
-                alert('Нужно войти в аккаунт');
-                return;
-            }
+        updateThread(newTitle.trim(), newContent.trim());
+    };
 
-            const content = document.getElementById('reply-content').value.trim();
-            if (!content || content.length < 2) {
-                alert('Введите текст ответа (минимум 2 символа)');
-                return;
-            }
+    async function updateThread(title, content) {
+        const { error } = await supabaseClient
+            .from('forum_threads')
+            .update({ title, content, updated_at: new Date().toISOString() })
+            .eq('id', threadId);
 
-            const submitBtn = document.getElementById('reply-submit');
-            submitBtn.disabled = true;
-            submitBtn.textContent = 'Отправка...';
+        if (error) {
+            alert('Ошибка: ' + error.message);
+            return;
+        }
+        window.location.reload();
+    }
 
-            const { error } = await supabaseClient
-                .from('forum_posts')
-                .insert({
-                    thread_id: threadId,
-                    author_id: currentUser.id,
-                    author_username: currentProfile?.username || 'Аноним',
-                    content: content
-                });
+    // === ЗАКРЫТИЕ / ОТКРЫТИЕ ТЕМЫ ===
+    window.toggleLock = async function () {
+        const newLockState = !currentThread.is_locked;
+        const action = newLockState ? 'закрыть' : 'открыть';
+        
+        if (!confirm(`Вы уверены, что хотите ${action} эту тему?`)) return;
 
-            if (error) {
-                alert('Ошибка: ' + error.message);
-                submitBtn.disabled = false;
-                submitBtn.textContent = 'Отправить ответ';
-                return;
-            }
+        const { error } = await supabaseClient
+            .from('forum_threads')
+            .update({ is_locked: newLockState, updated_at: new Date().toISOString() })
+            .eq('id', threadId);
 
-            // Обновить счётчики треда
-            await supabaseClient
-                .from('forum_threads')
-                .update({
-                    replies_count: (currentThread.replies_count || 0) + 1,
-                    last_reply_at: new Date().toISOString(),
-                    last_reply_username: currentProfile?.username || 'Аноним'
-                })
-                .eq('id', threadId);
+        if (error) {
+            alert('Ошибка: ' + error.message);
+            return;
+        }
+        window.location.reload();
+    };
 
-            window.location.reload();
-        };
+    // === РЕДАКТИРОВАНИЕ ПОСТА ===
+    window.editPost = function (postId) {
+        const contentEl = document.getElementById('content-' + postId);
+        const currentContent = contentEl.textContent;
 
-        window.deletePost = async function (postId) {
-            if (!confirm('Удалить этот ответ?')) return;
+        const newContent = prompt('Новый текст:', currentContent);
+        if (newContent === null) return;
+        if (!newContent.trim() || newContent.length < 2) {
+            alert('Текст минимум 2 символа');
+            return;
+        }
 
-            const { error } = await supabaseClient
-                .from('forum_posts')
-                .delete()
-                .eq('id', postId);
+        updatePost(postId, newContent.trim());
+    };
 
-            if (error) {
-                alert('Ошибка: ' + error.message);
-                return;
-            }
-            window.location.reload();
-        };
+    async function updatePost(postId, content) {
+        const { error } = await supabaseClient
+            .from('forum_posts')
+            .update({ content, updated_at: new Date().toISOString() })
+            .eq('id', postId);
 
-        window.deleteThread = async function () {
-            if (!confirm('Удалить всю тему? Это действие необратимо.')) return;
+        if (error) {
+            alert('Ошибка: ' + error.message);
+            return;
+        }
+        window.location.reload();
+    }
 
-            const { error } = await supabaseClient
-                .from('forum_threads')
-                .delete()
-                .eq('id', threadId);
+    // === ОТВЕТ В ТЕМЕ ===
+    window.submitReply = async function () {
+        if (!currentUser) {
+            alert('Нужно войти в аккаунт');
+            return;
+        }
+        if (currentThread.is_locked) {
+            alert('Тема закрыта, ответы недоступны');
+            return;
+        }
 
-            if (error) {
-                alert('Ошибка: ' + error.message);
-                return;
-            }
-            window.location.href = 'forum.html';
-        };
+        const content = document.getElementById('reply-content').value.trim();
+        if (!content || content.length < 2) {
+            alert('Введите текст ответа (минимум 2 символа)');
+            return;
+        }
 
-        window.addEventListener('DOMContentLoaded', init);
-    </script>
+        const submitBtn = document.getElementById('reply-submit');
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Отправка...';
+
+        const { error } = await supabaseClient
+            .from('forum_posts')
+            .insert({
+                thread_id: threadId,
+                author_id: currentUser.id,
+                author_username: currentProfile?.username || 'Аноним',
+                content: content
+            });
+
+        if (error) {
+            alert('Ошибка: ' + error.message);
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Отправить ответ';
+            return;
+        }
+
+        await supabaseClient
+            .from('forum_threads')
+            .update({
+                replies_count: (currentThread.replies_count || 0) + 1,
+                last_reply_at: new Date().toISOString(),
+                last_reply_username: currentProfile?.username || 'Аноним'
+            })
+            .eq('id', threadId);
+
+        window.location.reload();
+    };
+
+    // === УДАЛЕНИЕ ===
+    window.deletePost = async function (postId) {
+        if (!confirm('Удалить этот ответ?')) return;
+        const { error } = await supabaseClient.from('forum_posts').delete().eq('id', postId);
+        if (error) { alert('Ошибка: ' + error.message); return; }
+        window.location.reload();
+    };
+
+    window.deleteThread = async function () {
+        if (!confirm('Удалить всю тему? Это действие необратимо.')) return;
+        const { error } = await supabaseClient.from('forum_threads').delete().eq('id', threadId);
+        if (error) { alert('Ошибка: ' + error.message); return; }
+        window.location.href = 'forum.html';
+    };
+
+    window.addEventListener('DOMContentLoaded', init);
+</script>
 
 </body>
 </html>
