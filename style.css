@@ -2414,3 +2414,110 @@ footer {
         font-size: 20px;
     }
 }
+
+
+
+/* ==========================================================================
+   МОДАЛЬНЫЕ ОКНА ФОРУМА (редактирование, подтверждение)
+   ========================================================================== */
+
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(5, 2, 10, 0.85);
+    backdrop-filter: blur(8px);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s;
+}
+
+.modal-overlay.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.modal-box {
+    background: #130924;
+    border: 1px solid rgba(138, 92, 246, 0.3);
+    border-radius: 8px;
+    padding: 30px;
+    width: 100%;
+    max-width: 560px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8);
+    transform: translateY(20px);
+    transition: transform 0.25s;
+}
+
+.modal-overlay.active .modal-box {
+    transform: translateY(0);
+}
+
+.modal-box h3 {
+    color: #fff;
+    font-size: 20px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 20px;
+}
+
+.modal-box label {
+    display: block;
+    color: #94a3b8;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+    margin-top: 15px;
+}
+
+.modal-box input,
+.modal-box textarea {
+    width: 100%;
+    background: rgba(5, 2, 10, 0.6);
+    border: 1px solid rgba(138, 92, 246, 0.3);
+    padding: 14px 16px;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    border-radius: 4px;
+    outline: none;
+    font-family: 'Nunito', sans-serif;
+    resize: vertical;
+    transition: 0.3s;
+    box-sizing: border-box;
+}
+
+.modal-box textarea {
+    min-height: 150px;
+    line-height: 1.5;
+}
+
+.modal-box input:focus,
+.modal-box textarea:focus {
+    border-color: #a855f7;
+    box-shadow: 0 0 15px rgba(168, 85, 247, 0.2);
+}
+
+.modal-box .modal-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 25px;
+}
+
+.modal-box .modal-error {
+    color: #f87171;
+    font-size: 13px;
+    font-weight: 600;
+    margin-top: 10px;
+    min-height: 18px;
+}
