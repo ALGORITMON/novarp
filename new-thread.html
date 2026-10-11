@@ -123,9 +123,14 @@
 
         async function loadCategories() {
             const select = document.getElementById('thread-category');
+            
+            // Проверяем URL на предвыбранную категорию
+            const urlParams = new URLSearchParams(window.location.search);
+            const preselectedSlug = urlParams.get('category');
+            
             const { data, error } = await supabaseClient
                 .from('forum_categories')
-                .select('id, title, icon')
+                .select('id, slug, title, icon')
                 .order('sort_order');
 
             if (error || !data) {
@@ -134,7 +139,7 @@
             }
 
             select.innerHTML = '<option value="">— Выберите категорию —</option>' +
-                data.map(c => `<option value="${c.id}">${c.icon} ${c.title}</option>`).join('');
+                data.map(c => `<option value="${c.id}" ${c.slug === preselectedSlug ? 'selected' : ''}>${c.icon} ${c.title}</option>`).join('');
         }
 
         document.getElementById('thread-form').addEventListener('submit', async function (e) {

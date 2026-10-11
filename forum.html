@@ -85,57 +85,64 @@
     <script src="supabase.js"></script>
     <script src="auth-check.js"></script>
 
-    <script>
-        function escapeHtml(str) {
-            return String(str || '').replace(/[&<>"']/g, m => (
-                { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]
-            ));
-        }
+<script>
+    function escapeHtml(str) {
+        return String(str || '').replace(/[&<>"']/g, m => (
+            { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]
+        ));
+    }
 
-        function timeAgo(dateStr) {
-            const date = new Date(dateStr);
-            const diff = Math.floor((Date.now() - date.getTime()) / 1000);
-            if (diff < 60) return 'только что';
-            if (diff < 3600) return Math.floor(diff / 60) + ' мин. назад';
-            if (diff < 86400) return Math.floor(diff / 3600) + ' ч. назад';
-            if (diff < 2592000) return Math.floor(diff / 86400) + ' дн. назад';
-            return date.toLocaleDateString('ru-RU');
-        }
+    function timeAgo(dateStr) {
+        const date = new Date(dateStr);
+        const diff = Math.floor((Date.now() - date.getTime()) / 1000);
+        if (diff < 60) return 'только что';
+        if (diff < 3600) return Math.floor(diff / 60) + ' мин. назад';
+        if (diff < 86400) return Math.floor(diff / 3600) + ' ч. назад';
+        if (diff < 2592000) return Math.floor(diff / 86400) + ' дн. назад';
+        return date.toLocaleDateString('ru-RU');
+    }
 
-        function getInitials(nick) {
-            return (nick || '?').substring(0, 2).toUpperCase();
-        }
+    function getInitials(nick) {
+        return (nick || '?').substring(0, 2).toUpperCase();
+    }
 
-        // Показать кнопку «Создать тему» только залогиненным
-        async function initPage() {
-            const { data: { session } } = await supabaseClient.auth.getSession();
-            if (session) {
-                document.getElementById('new-thread-btn').style.display = 'inline-block';
+    const urlParams = new URLSearchParams(window.location.search);
+    const categorySlug = urlParams.get('category');
+
+    async function initPage() {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (session) {
+            document.getElementById('new-thread-btn').style.display = 'inline-block';
+            // Если выбрана категория, добавим её в ссылку для new-thread
+            if (categorySlug) {
+                document.getElementById('new-thread-btn').href = `new-thread.html?category=${categorySlug}`;
             }
-
-            await loadCategories();
-            await loadRecentThreads();
         }
+
+        if (categorySlug) {
+            await loadCategoryView();
+        } else {
+            await loadCategoriesView();
+        }
+    }
+
+    // === ВИД 1: ГЛАВНАЯ ФОРУМА ===
+    async function loadCategoriesView() {
+        const container = document.getElementById('categories-list');
+        const threadsContainer = document.getElementById('threads-list');
 
         // Загрузка категорий
-        async function loadCategories() {
-            const container = document.getElementById('categories-list');
-            const { data, error } = await supabaseClient
-                .from('forum_categories')
-                .select('*')
-                .order('sort_order');
+        const { data: categories, error: catError } = await supabaseClient
+            .from('forum_categories')
+            .select('*')
+            .order('sort_order');
 
-            if (error) {
-                container.innerHTML = `<div class="forum-empty" style="color:#ef4444;">Ошибка: ${error.message}</div>`;
-                return;
-            }
-
-            if (!data || data.length === 0) {
-                container.innerHTML = `<div class="forum-empty">Категорий пока нет</div>`;
-                return;
-            }
-
-            // Считаем количество тредов и постов в каждой категории
+        if (catError) {
+            container.innerHTML = `<div class="forum-empty" style="color:#ef4444;">Ошибка: ${catError.message}</div>`;
+        } else if (!categories || categories.length === 0) {
+            container.innerHTML = `<div class="forum-empty">Категорий пока нет</div>`;
+        } else {
+            // Считаем темы в каждой категории
             const { data: threadCounts } = await supabaseClient
                 .from('forum_threads')
                 .select('category_id');
@@ -145,7 +152,7 @@
                 counts[t.category_id] = (counts[t.category_id] || 0) + 1;
             });
 
-            container.innerHTML = data.map(cat => `
+            container.innerHTML = categories.map(cat => `
                 <a href="forum.html?category=${cat.slug}" class="forum-category">
                     <div class="forum-category-icon">${cat.icon || '💬'}</div>
                     <div class="forum-category-info">
@@ -163,70 +170,119 @@
         }
 
         // Загрузка последних тредов
-        async function loadRecentThreads() {
-            const container = document.getElementById('threads-list');
+        const { data: threads, error: tErr } = await supabaseClient
+            .from('forum_threads')
+            .select('*, forum_categories!inner(slug, title, icon)')
+            .order('is_pinned', { ascending: false })
+            .order('last_reply_at', { ascending: false })
+            .limit(30);
 
-            // Проверяем URL на категорию
-            const urlParams = new URLSearchParams(window.location.search);
-            const categorySlug = urlParams.get('category');
+        if (tErr) {
+            threadsContainer.innerHTML = `<div class="forum-empty" style="color:#ef4444;">Ошибка: ${tErr.message}</div>`;
+        } else if (!threads || threads.length === 0) {
+            threadsContainer.innerHTML = `<div class="forum-empty">Форум пока пустой. <br><a href="new-thread.html">Создать первую тему</a></div>`;
+        } else {
+            threadsContainer.innerHTML = threads.map(t => renderThread(t)).join('');
+        }
+    }
 
-            let query = supabaseClient
-                .from('forum_threads')
-                .select('*, forum_categories!inner(slug, title, icon)')
-                .order('is_pinned', { ascending: false })
-                .order('last_reply_at', { ascending: false })
-                .limit(30);
+    // === ВИД 2: КОНКРЕТНАЯ КАТЕГОРИЯ ===
+    async function loadCategoryView() {
+        const container = document.getElementById('categories-list');
+        const threadsContainer = document.getElementById('threads-list');
 
-            if (categorySlug) {
-                query = query.eq('forum_categories.slug', categorySlug);
-            }
+        // Меняем заголовок страницы
+        document.querySelector('.forum-header h1').innerHTML = 'Загрузка...';
 
-            const { data, error } = await query;
+        // Загружаем категорию
+        const { data: category, error: catErr } = await supabaseClient
+            .from('forum_categories')
+            .select('*')
+            .eq('slug', categorySlug)
+            .single();
 
-            if (error) {
-                container.innerHTML = `<div class="forum-empty" style="color:#ef4444;">Ошибка: ${error.message}</div>`;
-                return;
-            }
-
-            if (!data || data.length === 0) {
-                container.innerHTML = `<div class="forum-empty">
-                    ${categorySlug ? 'В этой категории пока нет тем.' : 'Форум пока пустой.'}
-                    <br><a href="new-thread.html">Создать первую тему</a>
-                </div>`;
-                return;
-            }
-
-            container.innerHTML = data.map(t => `
-                <a href="thread.html?id=${t.id}" class="forum-thread">
-                    <div class="forum-thread-avatar">${getInitials(t.author_username)}</div>
-                    <div class="forum-thread-main">
-                        <div class="forum-thread-title">
-                            ${t.is_pinned ? '<span class="pin-badge">📌 Закреплено</span>' : ''}
-                            ${t.is_locked ? '<span class="lock-badge">🔒 Закрыто</span>' : ''}
-                            ${escapeHtml(t.title)}
-                        </div>
-                        <div class="forum-thread-meta">
-                            <strong>${escapeHtml(t.author_username)}</strong>
-                            • ${t.forum_categories?.icon || '💬'} ${escapeHtml(t.forum_categories?.title || '')}
-                            • ${timeAgo(t.created_at)}
-                        </div>
-                    </div>
-                    <div class="forum-thread-stats">
-                        <div>
-                            <div class="stat-num">${t.replies_count || 0}</div>
-                            <div class="stat-label">Ответов</div>
-                        </div>
-                        <div>
-                            <div class="stat-num">${t.views || 0}</div>
-                            <div class="stat-label">Просм.</div>
-                        </div>
-                    </div>
-                </a>
-            `).join('');
+        if (catErr || !category) {
+            container.innerHTML = '<div class="forum-empty" style="color:#ef4444;">Категория не найдена</div>';
+            threadsContainer.innerHTML = '<div class="forum-empty"><a href="forum.html">← Вернуться на форум</a></div>';
+            return;
         }
 
-        window.addEventListener('DOMContentLoaded', initPage);
-    </script>
+        // Меняем заголовок и скрываем список категорий
+        document.querySelector('.forum-header h1').innerHTML = `${category.icon} ${escapeHtml(category.title)}`;
+        document.querySelector('.forum-header p').textContent = category.description || '';
+        container.style.display = 'none';
+        container.parentElement.querySelector('h2').style.display = 'none'; // скрываем "КАТЕГОРИИ"
+
+        // Хлебные крошки
+        const headerDiv = document.querySelector('.forum-header');
+        if (!document.getElementById('breadcrumbs')) {
+            const bc = document.createElement('div');
+            bc.id = 'breadcrumbs';
+            bc.className = 'forum-breadcrumbs';
+            bc.innerHTML = `<a href="forum.html">Форум</a><span>›</span>${escapeHtml(category.title)}`;
+            headerDiv.parentElement.insertBefore(bc, headerDiv);
+        }
+
+        // Грузим только темы этой категории
+        const { data: threads, error: tErr } = await supabaseClient
+            .from('forum_threads')
+            .select('*')
+            .eq('category_id', category.id)
+            .order('is_pinned', { ascending: false })
+            .order('last_reply_at', { ascending: false });
+
+        // Меняем заголовок «Последние темы» → «Темы в категории»
+        const threadsHeader = threadsContainer.previousElementSibling;
+        if (threadsHeader) threadsHeader.textContent = `Темы в категории (${threads?.length || 0})`;
+
+        if (tErr) {
+            threadsContainer.innerHTML = `<div class="forum-empty" style="color:#ef4444;">Ошибка: ${tErr.message}</div>`;
+        } else if (!threads || threads.length === 0) {
+            threadsContainer.innerHTML = `<div class="forum-empty">
+                В этой категории пока нет тем.<br>
+                <a href="new-thread.html?category=${categorySlug}">Создать первую тему</a>
+            </div>`;
+        } else {
+            threadsContainer.innerHTML = threads.map(t => renderThread(t, category)).join('');
+        }
+    }
+
+    // === РЕНДЕР ОДНОЙ ТЕМЫ ===
+    function renderThread(t, category = null) {
+        const catIcon = category?.icon || t.forum_categories?.icon || '💬';
+        const catTitle = category?.title || t.forum_categories?.title || '';
+
+        return `
+            <a href="thread.html?id=${t.id}" class="forum-thread">
+                <div class="forum-thread-avatar">${getInitials(t.author_username)}</div>
+                <div class="forum-thread-main">
+                    <div class="forum-thread-title">
+                        ${t.is_pinned ? '<span class="pin-badge">📌 Закреплено</span>' : ''}
+                        ${t.is_locked ? '<span class="lock-badge">🔒 Закрыто</span>' : ''}
+                        ${escapeHtml(t.title)}
+                    </div>
+                    <div class="forum-thread-meta">
+                        <strong>${escapeHtml(t.author_username)}</strong>
+                        ${!category ? `• ${catIcon} ${escapeHtml(catTitle)}` : ''}
+                        • ${timeAgo(t.created_at)}
+                    </div>
+                </div>
+                <div class="forum-thread-stats">
+                    <div>
+                        <div class="stat-num">${t.replies_count || 0}</div>
+                        <div class="stat-label">Ответов</div>
+                    </div>
+                    <div>
+                        <div class="stat-num">${t.views || 0}</div>
+                        <div class="stat-label">Просм.</div>
+                    </div>
+                </div>
+            </a>
+        `;
+    }
+
+    window.addEventListener('DOMContentLoaded', initPage);
+</script>
 
 </body>
 </html>
