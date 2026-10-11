@@ -40,6 +40,12 @@
             font-size: 40px;
             color: #3b82f6;
             border: 3px solid #3b82f6;
+            overflow: hidden;
+        }
+        .avatar-block img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
         }
         .user-name {
             font-size: 20px;
@@ -56,9 +62,7 @@
             display: inline-block;
             margin-bottom: 15px;
         }
-        .role-badge-wrap {
-            margin-bottom: 25px;
-        }
+        .role-badge-wrap { margin-bottom: 25px; }
         .lk-nav { list-style: none; text-align: left; }
         .lk-nav li { margin-bottom: 10px; }
         .lk-nav a {
@@ -123,6 +127,157 @@
         .stat-icon.time { background: rgba(168, 85, 247, 0.1); color: #a855f7; }
         .stat-info p { font-size: 13px; color: #8a8a8a; margin: 0; }
         .stat-info h3 { font-size: 20px; color: #fff; margin-top: 2px; }
+
+        /* Настройки профиля */
+        .settings-section {
+            background: #232834;
+            padding: 25px;
+            border-radius: 8px;
+            border: 1px solid #2d3446;
+            margin-bottom: 20px;
+        }
+        .settings-section h3 {
+            color: #fff;
+            font-size: 16px;
+            margin-bottom: 18px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .settings-section h3 i { color: #a855f7; }
+        .settings-section label {
+            display: block;
+            color: #94a3b8;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+            margin-top: 15px;
+        }
+        .settings-section label:first-of-type { margin-top: 0; }
+        .settings-section input[type="text"],
+        .settings-section input[type="email"],
+        .settings-section textarea {
+            width: 100%;
+            background: #13151c;
+            border: 1px solid #2d3446;
+            padding: 12px 15px;
+            border-radius: 6px;
+            color: #fff;
+            font-family: 'Nunito', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            outline: none;
+            transition: 0.3s;
+            box-sizing: border-box;
+            resize: vertical;
+        }
+        .settings-section input:focus,
+        .settings-section textarea:focus {
+            border-color: #a855f7;
+            box-shadow: 0 0 15px rgba(168, 85, 247, 0.15);
+        }
+        .settings-section input:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .settings-section textarea { min-height: 80px; }
+        .field-hint {
+            color: #64748b;
+            font-size: 12px;
+            margin-top: 6px;
+            font-weight: 600;
+        }
+        .btn-save {
+            background: #3b82f6;
+            color: #fff;
+            border: none;
+            padding: 12px 28px;
+            border-radius: 6px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: 0.3s;
+            font-family: 'Nunito', sans-serif;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 20px;
+        }
+        .btn-save:hover {
+            background: #a855f7;
+            box-shadow: 0 0 15px rgba(168, 85, 247, 0.4);
+        }
+        .btn-save:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .avatar-preview-wrap {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 15px;
+        }
+        .avatar-preview {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: #13151c;
+            border: 3px solid #2d3446;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+        .avatar-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .avatar-preview i {
+            font-size: 36px;
+            color: #3b82f6;
+        }
+        .avatar-upload-btn {
+            background: #3b82f6;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-weight: 700;
+            cursor: pointer;
+            font-size: 13px;
+            font-family: 'Nunito', sans-serif;
+            transition: 0.3s;
+        }
+        .avatar-upload-btn:hover {
+            background: #a855f7;
+        }
+        .avatar-remove-btn {
+            background: transparent;
+            color: #f87171;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-weight: 700;
+            cursor: pointer;
+            font-size: 13px;
+            font-family: 'Nunito', sans-serif;
+            transition: 0.3s;
+            margin-left: 10px;
+        }
+        .avatar-remove-btn:hover {
+            background: rgba(239, 68, 68, 0.1);
+        }
+        .status-msg {
+            font-size: 13px;
+            font-weight: 700;
+            margin-top: 10px;
+            min-height: 18px;
+        }
+        .status-msg.success { color: #4ade80; }
+        .status-msg.error { color: #f87171; }
     </style>
 </head>
 <body>
@@ -143,7 +298,7 @@
 
     <div class="profile-container">
         <aside class="profile-sidebar">
-            <div class="avatar-block">
+            <div class="avatar-block" id="sidebar-avatar">
                 <i class="fa-solid fa-user-shield"></i>
             </div>
             <div class="user-name" id="username-display">Загрузка...</div>
@@ -157,7 +312,7 @@
                 <li id="admin-nav-item" style="display: none;">
                     <a href="admin.html" style="color: #f87171;"><i class="fa-solid fa-shield-halved"></i> Админ-панель</a>
                 </li>
-                <li><a href="#" onclick="switchTab('settings', this)"><i class="fa-solid fa-sliders"></i> Настройки аккаунта</a></li>
+                <li><a href="#" onclick="switchTab('settings', this)"><i class="fa-solid fa-sliders"></i> Настройки профиля</a></li>
                 <li><a href="#" style="color: #ef4444;" onclick="logout()"><i class="fa-solid fa-right-from-bracket"></i> Выйти из аккаунта</a></li>
             </ul>
         </aside>
@@ -201,22 +356,42 @@
         </main>
 
         <main class="profile-content" id="tab-settings" style="display: none;">
-            <h2 class="section-title">Настройки аккаунта</h2>
-            <div style="display: flex; flex-direction: column; gap: 20px;">
-                <div style="background: #232834; padding: 20px; border-radius: 8px; border: 1px solid #2d3446;">
-                    <h3 style="color: #fff; font-size: 16px; margin-bottom: 15px;"><i class="fa-brands fa-telegram" style="color:#24a1de;"></i> Привязка Telegram</h3>
-                    <p style="color: #8a8a8a; font-size: 14px; margin-bottom: 15px;">Привяжите Telegram-бота, чтобы получать уведомления о входе в аккаунт и защитить свой профиль.</p>
-                    <button style="background: #24a1de; color: #fff; border: none; padding: 10px 20px; border-radius: 50px; font-weight: 600; cursor: pointer;">Подключить Telegram</button>
-                </div>
+            <h2 class="section-title">Настройки профиля</h2>
 
-                <div style="background: #232834; padding: 20px; border-radius: 8px; border: 1px solid #2d3446;">
-                    <h3 style="color: #fff; font-size: 16px; margin-bottom: 15px;"><i class="fa-solid fa-key"></i> Промокод</h3>
-                    <p style="color: #8a8a8a; font-size: 14px; margin-bottom: 15px;">Вводите бонусные промокоды от администрации для получения игровой валюты.</p>
-                    <div style="display: flex; gap: 10px;">
-                        <input type="text" placeholder="Введите промокод" style="background: #13151c; border: 1px solid #2d3446; padding: 10px 15px; border-radius: 6px; color: #fff; flex-grow: 1;">
-                        <button style="background: #3b82f6; color: #fff; border: none; padding: 10px 25px; border-radius: 6px; font-weight: 600; cursor: pointer;">Активировать</button>
+            <div class="settings-section">
+                <h3><i class="fa-solid fa-user"></i> Основная информация</h3>
+
+                <label for="edit-username">Никнейм</label>
+                <input type="text" id="edit-username" placeholder="Например: alex_gromov" minlength="3" maxlength="20">
+                <div class="field-hint">3–20 символов, латиница, цифры, _ и -</div>
+
+                <label for="edit-bio">О себе</label>
+                <textarea id="edit-bio" placeholder="Коротко о себе (до 200 символов)" maxlength="200"></textarea>
+                <div class="field-hint">Отображается в вашем профиле</div>
+
+                <button class="btn-save" id="save-main-info">Сохранить</button>
+                <div class="status-msg" id="main-status"></div>
+            </div>
+
+            <div class="settings-section">
+                <h3><i class="fa-solid fa-image"></i> Аватар</h3>
+
+                <div class="avatar-preview-wrap">
+                    <div class="avatar-preview" id="avatar-preview">
+                        <i class="fa-solid fa-user"></i>
+                    </div>
+                    <div>
+                        <input type="file" id="avatar-input" accept="image/png, image/jpeg, image/webp" style="display: none;">
+                        <button class="avatar-upload-btn" onclick="document.getElementById('avatar-input').click()">
+                            📁 Загрузить
+                        </button>
+                        <button class="avatar-remove-btn" id="avatar-remove-btn" style="display: none;">
+                            🗑️ Удалить
+                        </button>
+                        <div class="field-hint" style="margin-top: 10px;">PNG, JPG, WebP. Максимум 2 МБ.</div>
                     </div>
                 </div>
+                <div class="status-msg" id="avatar-status"></div>
             </div>
         </main>
     </div>
@@ -248,6 +423,9 @@
     <script src="auth-check.js"></script>
 
     <script>
+        let currentUser = null;
+        let currentProfile = null;
+
         function switchTab(tabName, el) {
             document.getElementById('tab-main').style.display = 'none';
             document.getElementById('tab-settings').style.display = 'none';
@@ -264,31 +442,48 @@
             return { user: 'User', vip: 'VIP', mod: 'Moderator', admin: 'Admin', owner: 'Owner' }[role] || 'User';
         }
 
+        function showStatus(elId, msg, isError = false) {
+            const el = document.getElementById(elId);
+            el.textContent = msg;
+            el.className = 'status-msg ' + (isError ? 'error' : 'success');
+            setTimeout(() => { el.textContent = ''; el.className = 'status-msg'; }, 4000);
+        }
+
+        function renderAvatar(avatarUrl, containerId) {
+            const el = document.getElementById(containerId);
+            if (!el) return;
+            if (avatarUrl) {
+                el.innerHTML = `<img src="${avatarUrl}" alt="avatar">`;
+            } else {
+                el.innerHTML = '<i class="fa-solid fa-user-shield"></i>';
+            }
+        }
+
         async function initProfile() {
             const { data: { session } } = await supabaseClient.auth.getSession();
-
             if (!session) {
                 window.location.href = 'login.html';
                 return;
             }
 
-            const user = session.user;
-            const email = user.email;
+            currentUser = session.user;
+            const email = currentUser.email;
 
             const { data: profile, error } = await supabaseClient
                 .from('profiles')
-                .select('username, site_role, game_role, money, playtime, job, warns')
-                .eq('id', user.id)
+                .select('username, site_role, game_role, money, playtime, job, warns, avatar_url, bio')
+                .eq('id', currentUser.id)
                 .single();
 
-            if (error) {
-                console.error('Ошибка загрузки профиля:', error);
-            }
+            if (error) console.error('Ошибка загрузки профиля:', error);
+            currentProfile = profile || {};
 
-            const username = profile?.username || user.user_metadata?.username || 'Безымянный';
+            const username = profile?.username || currentUser.user_metadata?.username || 'Безымянный';
             const siteRole = profile?.site_role || 'user';
             const gameRole = profile?.game_role || 'user';
+            const avatarUrl = profile?.avatar_url || null;
 
+            // Сайдбар
             document.getElementById('username-display').innerText = username;
             document.getElementById('email-display').innerText = email;
 
@@ -296,6 +491,9 @@
             badge.textContent = roleLabel(siteRole);
             badge.className = 'role-badge role-' + siteRole;
 
+            renderAvatar(avatarUrl, 'sidebar-avatar');
+
+            // Статистика
             document.getElementById('money-display').innerText = '$' + (profile?.money || 0).toLocaleString('ru-RU');
             document.getElementById('rub-display').innerText = '0 ₽';
             document.getElementById('time-display').innerText = Math.floor((profile?.playtime || 0) / 60) + ' ч.';
@@ -307,9 +505,161 @@
             if (siteRole === 'admin') {
                 document.getElementById('admin-nav-item').style.display = 'block';
             }
+
+            // Настройки
+            document.getElementById('edit-username').value = username;
+            document.getElementById('edit-bio').value = profile?.bio || '';
+            renderAvatar(avatarUrl, 'avatar-preview');
+
+            if (avatarUrl) {
+                document.getElementById('avatar-remove-btn').style.display = 'inline-block';
+            }
         }
+
+        // === СОХРАНЕНИЕ НИКА И BIO ===
+        document.getElementById('save-main-info').addEventListener('click', async () => {
+            const btn = document.getElementById('save-main-info');
+            const newUsername = document.getElementById('edit-username').value.trim();
+            const newBio = document.getElementById('edit-bio').value.trim();
+
+            if (!/^[A-Za-z0-9_-]{3,20}$/.test(newUsername)) {
+                showStatus('main-status', 'Ник: 3–20 символов, латиница, цифры, _ и -', true);
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = 'Сохранение...';
+
+            const { error } = await supabaseClient
+                .from('profiles')
+                .update({ username: newUsername, bio: newBio, updated_at: new Date().toISOString() })
+                .eq('id', currentUser.id);
+
+            if (error) {
+                let msg = error.message;
+                if (msg.includes('duplicate key')) msg = 'Этот никнейм уже занят';
+                showStatus('main-status', 'Ошибка: ' + msg, true);
+                btn.disabled = false;
+                btn.textContent = 'Сохранить';
+                return;
+            }
+
+            // Обновляем также user_metadata (чтобы в других местах ник был свежий)
+            await supabaseClient.auth.updateUser({
+                data: { username: newUsername }
+            });
+
+            document.getElementById('username-display').innerText = newUsername;
+
+            showStatus('main-status', '✅ Профиль обновлён');
+            btn.disabled = false;
+            btn.textContent = 'Сохранить';
+        });
+
+        // === ЗАГРУЗКА АВАТАРА ===
+        document.getElementById('avatar-input').addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            if (file.size > 2 * 1024 * 1024) {
+                showStatus('avatar-status', 'Файл больше 2 МБ', true);
+                return;
+            }
+
+            const allowedTypes = ['image/png', 'image/jpeg', 'image/webp'];
+            if (!allowedTypes.includes(file.type)) {
+                showStatus('avatar-status', 'Разрешены только PNG, JPG, WebP', true);
+                return;
+            }
+
+            showStatus('avatar-status', 'Загрузка...');
+
+            // Путь: avatars/{user_id}/avatar.{ext}
+            const ext = file.name.split('.').pop().toLowerCase();
+            const filePath = `${currentUser.id}/avatar.${ext}`;
+
+            // Удаляем старый файл (если есть, чтобы не плодить)
+            if (currentProfile?.avatar_url) {
+                try {
+                    const oldPath = currentProfile.avatar_url.split('/avatars/')[1];
+                    if (oldPath) {
+                        await supabaseClient.storage.from('avatars').remove([oldPath]);
+                    }
+                } catch (err) {
+                    console.warn('Не удалось удалить старый аватар:', err);
+                }
+            }
+
+            // Загружаем новый
+            const { error: uploadError } = await supabaseClient.storage
+                .from('avatars')
+                .upload(filePath, file, { upsert: true, contentType: file.type });
+
+            if (uploadError) {
+                showStatus('avatar-status', 'Ошибка загрузки: ' + uploadError.message, true);
+                return;
+            }
+
+            // Получаем публичный URL
+            const { data: urlData } = supabaseClient.storage
+                .from('avatars')
+                .getPublicUrl(filePath);
+
+            // Добавляем cache-buster, чтобы браузер не показывал старую картинку
+            const publicUrl = urlData.publicUrl + '?t=' + Date.now();
+
+            // Сохраняем URL в profiles
+            const { error: updateError } = await supabaseClient
+                .from('profiles')
+                .update({ avatar_url: publicUrl, updated_at: new Date().toISOString() })
+                .eq('id', currentUser.id);
+
+            if (updateError) {
+                showStatus('avatar-status', 'Ошибка сохранения: ' + updateError.message, true);
+                return;
+            }
+
+            currentProfile.avatar_url = publicUrl;
+
+            // Обновляем UI
+            renderAvatar(publicUrl, 'avatar-preview');
+            renderAvatar(publicUrl, 'sidebar-avatar');
+            document.getElementById('avatar-remove-btn').style.display = 'inline-block';
+
+            showStatus('avatar-status', '✅ Аватар обновлён');
+            e.target.value = ''; // сбрасываем input
+        });
+
+        // === УДАЛЕНИЕ АВАТАРА ===
+        document.getElementById('avatar-remove-btn').addEventListener('click', async () => {
+            if (!confirm('Удалить аватар?')) return;
+
+            if (currentProfile?.avatar_url) {
+                const oldPath = currentProfile.avatar_url.split('/avatars/')[1]?.split('?')[0];
+                if (oldPath) {
+                    await supabaseClient.storage.from('avatars').remove([oldPath]);
+                }
+            }
+
+            const { error } = await supabaseClient
+                .from('profiles')
+                .update({ avatar_url: null, updated_at: new Date().toISOString() })
+                .eq('id', currentUser.id);
+
+            if (error) {
+                showStatus('avatar-status', 'Ошибка: ' + error.message, true);
+                return;
+            }
+
+            currentProfile.avatar_url = null;
+            renderAvatar(null, 'avatar-preview');
+            renderAvatar(null, 'sidebar-avatar');
+            document.getElementById('avatar-remove-btn').style.display = 'none';
+            showStatus('avatar-status', '✅ Аватар удалён');
+        });
 
         window.addEventListener('DOMContentLoaded', initProfile);
     </script>
+
 </body>
 </html>
